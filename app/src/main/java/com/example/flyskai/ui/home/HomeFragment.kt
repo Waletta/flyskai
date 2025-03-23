@@ -5,9 +5,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.example.flyskai.databinding.FragmentHomeBinding
 import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.locationcomponent.location
+import java.util.Locale
 
 class HomeFragment : Fragment() {
 
@@ -20,6 +22,18 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
+
+        val homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
+
+        // Observe LiveData and update TextViews
+        homeViewModel.speed.observe(viewLifecycleOwner) { speed ->
+            binding.textSpeed.text = String.format(Locale.US, "Speed: %.1f m/s", speed)
+        }
+
+        homeViewModel.altitude.observe(viewLifecycleOwner) { alt ->
+            binding.textAltitude.text = String.format(Locale.US, "Altitude: %.1f m", alt)
+        }
+
 
         val mapView = binding.mapView
         val mapboxMap = mapView.getMapboxMap()
@@ -39,7 +53,6 @@ class HomeFragment : Fragment() {
                 )
             }
         }
-
         return binding.root // ✅ now properly outside loadStyleUri block
     }
 

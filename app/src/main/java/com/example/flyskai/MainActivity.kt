@@ -54,9 +54,10 @@ class MainActivity : AppCompatActivity() {
                 for (location in locationResult.locations) {
                     val lat = location.latitude
                     val lon = location.longitude
-                    val locationText = "📍 Lat: $lat\n🧭 Lon: $lon"
-                    Log.d("FlySkai", locationText)
+                    val speed = location.speed        // m/s
+                    val altitude = location.altitude  // meters
                     homeViewModel.updateLocation(lat, lon)
+                    homeViewModel.updateSpeedAndAltitude(speed, altitude)
                 }
             }
         }
@@ -67,11 +68,11 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.appBarMain.toolbar)
 
-        binding.appBarMain.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
-        }
+//        binding.appBarMain.fab.setOnClickListener { view ->
+//            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+//                .setAction("Action", null)
+//                .setAnchorView(R.id.fab).show()
+//        }
         val drawerLayout: DrawerLayout = binding.drawerLayout
         val navView: NavigationView = binding.navView
         val navController = findNavController(R.id.nav_host_fragment_content_main)

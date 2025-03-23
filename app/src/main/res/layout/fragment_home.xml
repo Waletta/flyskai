@@ -16,4 +16,34 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <TextView
+        android:id="@+id/textAltitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Altitude: -- m"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"
+        android:padding="4dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintBottom_toTopOf="@id/textSpeed"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="Altitude: 1234 m" />
+
+    <TextView
+        android:id="@+id/textSpeed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Speed: -- m/s"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"
+        android:padding="4dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="Speed: 75.0 m/s" />
+
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
