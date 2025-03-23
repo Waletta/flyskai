@@ -1,6 +1,7 @@
 package com.example.flyskai
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Looper
@@ -24,20 +25,14 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.CameraPosition
-
+import androidx.lifecycle.ViewModelProvider
+import com.example.flyskai.ui.home.HomeViewModel
 
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
+    private lateinit var homeViewModel: HomeViewModel
     private lateinit var binding: ActivityMainBinding
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val locationPermissionRequest = 100
@@ -60,14 +55,16 @@ class MainActivity : AppCompatActivity() {
                 for (location in locationResult.locations) {
                     val lat = location.latitude
                     val lon = location.longitude
-                    Log.d("FlyMentor", "🛰️ Lat: $lat, Lon: $lon")
-                    Toast.makeText(this@MainActivity, "Lat: $lat\nLon: $lon", Toast.LENGTH_SHORT).show()
+                    val locationText = "📍 Lat: $lat\n🧭 Lon: $lon"
+                    Log.d("FlySkai", locationText)
+                    homeViewModel.updateLocation(lat, lon)
                 }
             }
         }
 
-    binding = ActivityMainBinding.inflate(layoutInflater)
+        binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
 
         setSupportActionBar(binding.appBarMain.toolbar)
 
@@ -88,6 +85,12 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+
+        if (checkPermission()) {
+            startLocationUpdates()
+        } else {
+            requestPermission()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
