@@ -34,7 +34,6 @@ class HomeFragment : Fragment() {
             binding.textAltitude.text = String.format(Locale.US, "Altitude: %.1f m", alt)
         }
 
-
         val mapView = binding.mapView
         val mapboxMap = mapView.getMapboxMap()
 
@@ -53,7 +52,7 @@ class HomeFragment : Fragment() {
                 )
             }
         }
-        return binding.root // ✅ now properly outside loadStyleUri block
+        return binding.root
     }
 
     override fun onStart() {

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">flyskai</string>
+    <string name="app_name">FlyskAI</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="nav_header_title">Android Studio</string>
@@ -7,7 +7,7 @@
     <string name="nav_header_desc">Navigation header</string>
     <string name="action_settings">Settings</string>
 
-    <string name="menu_home">FlySkai</string>
+    <string name="menu_home">FlyskAI</string>
     <string name="menu_gallery">Gallery</string>
     <string name="menu_slideshow">Slideshow</string>
     <string name="mapbox_access_token">pk.eyJ1IjoiZmx5bWVudG91ciIsImEiOiJjbThrY2Rsb2kwcHl0MmpzYWN0dGtpa2RhIn0.JA5zswjBA3ixkzimIM9djQ</string>
