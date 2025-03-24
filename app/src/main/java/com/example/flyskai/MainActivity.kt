@@ -43,8 +43,9 @@ class MainActivity : AppCompatActivity() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        locationRequest = LocationRequest.Builder(10_000L)
+        locationRequest = LocationRequest.Builder(1_000L)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+            .setMinUpdateDistanceMeters(5f)
             .build()
 
         locationCallback = object : LocationCallback() {
@@ -127,7 +128,7 @@ class MainActivity : AppCompatActivity() {
                 requestPermission()
             }
         } catch (e: SecurityException) {
-            Log.e("FlyMentor", "SecurityException: ${e.message}")
+            Log.e("FlyskAI", "SecurityException: ${e.message}")
         }
     }
 
@@ -138,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == locationPermissionRequest && grantResults.isNotEmpty()
             && grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-            startLocationUpdates() // ⬅️ start periodic updates instead
+            startLocationUpdates()
         } else {
             Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
         }
