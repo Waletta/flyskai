@@ -10,5 +10,4 @@
     <string name="menu_home">FlyskAI</string>
     <string name="menu_gallery">Gallery</string>
     <string name="menu_slideshow">Slideshow</string>
-    <string name="mapbox_access_token">pk.eyJ1IjoiZmx5bWVudG91ciIsImEiOiJjbThrY2Rsb2kwcHl0MmpzYWN0dGtpa2RhIn0.JA5zswjBA3ixkzimIM9djQ</string>
 </resources>

@@ -53,10 +53,10 @@ class MainActivity : AppCompatActivity() {
                 for (location in locationResult.locations) {
                     val lat = location.latitude
                     val lon = location.longitude
-                    val speed = location.speed        // m/s
+                    val speed = location.speed * 3.6       // Km/h
                     val altitude = location.altitude  // meters
                     homeViewModel.updateLocation(lat, lon)
-                    homeViewModel.updateSpeedAndAltitude(speed, altitude)
+                    homeViewModel.updateSpeedAndAltitude(speed.toFloat(), altitude)
                 }
             }
         }
