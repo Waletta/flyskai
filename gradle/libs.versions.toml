@@ -13,8 +13,7 @@ lifecycleViewmodelKtx = "2.8.7"
 navigationFragmentKtx = "2.8.9"
 navigationUiKtx = "2.8.9"
 play_services_location = "21.3.0"
-mapbox-v10 = "10.15.0"
-mapbox-offline = "0.5.0"
+mapbox-v11 = "11.10.3"
 
 
 [libraries]
@@ -30,8 +29,7 @@ androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifec
 androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
 androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "play_services_location" }
-mapbox-android = { module = "com.mapbox.maps:android", version.ref = "mapbox-v10" }
-mapbox-offline-plugin = { group = "com.mapbox.mapboxsdk", name = "mapbox-android-plugin-offline", version.ref = "mapbox-offline" }
+mapbox-android = { module = "com.mapbox.maps:android", version.ref = "mapbox-v11" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
