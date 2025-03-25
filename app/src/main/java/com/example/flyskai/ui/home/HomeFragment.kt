@@ -45,11 +45,13 @@ class HomeFragment : Fragment() {
             val homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
 
             homeViewModel.speed.observe(viewLifecycleOwner) { speed ->
-                binding.textSpeed.text = String.format(Locale.US, "Speed: %.1f km/h", speed)
+                val displayedSpeed = speed ?: 0f
+                binding.textSpeed.text = String.format(Locale.US, "Speed: %.1f km/h", displayedSpeed)
             }
 
             homeViewModel.altitude.observe(viewLifecycleOwner) { alt ->
-                binding.textAltitude.text = String.format(Locale.US, "Altitude: %.1f m", alt)
+                val displayedAlt = alt ?: 0.0
+                binding.textAltitude.text = String.format(Locale.US, "Altitude: %.1f m", displayedAlt)
             }
 
             val mapInitOptions = MapInitOptions(requireContext())

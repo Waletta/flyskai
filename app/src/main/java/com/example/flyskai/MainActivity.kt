@@ -26,6 +26,10 @@ import com.google.android.gms.location.Priority
 import androidx.lifecycle.ViewModelProvider
 import com.example.flyskai.ui.home.HomeViewModel
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,20 +48,28 @@ class MainActivity : AppCompatActivity() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         locationRequest = LocationRequest.Builder(1_000L)
+            .setMinUpdateIntervalMillis(500L)             // Fastest interval of 0.5 seconds
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-            .setMinUpdateDistanceMeters(5f)
+            .setMaxUpdateDelayMillis(2_000L)             // Maximum delay between updates
+            .setMinUpdateDistanceMeters(2f)
             .build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
-                super.onLocationResult(locationResult)
-                for (location in locationResult.locations) {
-                    val lat = location.latitude
-                    val lon = location.longitude
-                    val speed = location.speed * 3.6       // Km/h
-                    val altitude = location.altitude  // meters
-                    homeViewModel.updateLocation(lat, lon)
-                    homeViewModel.updateSpeedAndAltitude(speed.toFloat(), altitude)
+                locationResult.lastLocation?.let { location ->
+                    // Process on background thread to avoid blocking UI
+                    CoroutineScope(Dispatchers.Default).launch {
+                        val lat = location.latitude
+                        val lon = location.longitude
+                        val speed = location.speed * 3.6f
+                        val altitude = location.altitude
+                        val bearing = location.bearing
+
+                        // Update ViewModel on main thread
+                        withContext(Dispatchers.Main) {
+                            homeViewModel.updateLocationData(lat, lon, speed, altitude, bearing)
+                        }
+                    }
                 }
             }
         }
@@ -86,7 +98,6 @@ class MainActivity : AppCompatActivity() {
 
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.main, menu)
         return true
     }
