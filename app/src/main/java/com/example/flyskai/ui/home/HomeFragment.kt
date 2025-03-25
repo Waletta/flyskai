@@ -1,6 +1,5 @@
 package com.example.flyskai.ui.home
 
-import android.app.Fragment
 import android.content.Context
 import com.mapbox.common.TileStore
 import android.os.Bundle
@@ -8,9 +7,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.example.flyskai.databinding.FragmentHomeBinding
+import androidx.fragment.app.Fragment
 import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.locationcomponent.location
-import androidx.core.content.ContentProviderCompat.requireContext
 import com.mapbox.geojson.Point
 import com.mapbox.maps.plugin.animation.easeTo
 import com.example.flyskai.R
@@ -21,11 +20,8 @@ import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.TilesetDescriptorOptions
 import com.mapbox.maps.CameraOptions
-
-
 import com.mapbox.maps.CoordinateBounds
 import com.mapbox.maps.OfflineManager
-
 
 class HomeFragment : Fragment() {
 
@@ -55,8 +51,6 @@ class HomeFragment : Fragment() {
             binding.mapContainer.addView(mapView)
 
             val mapboxMap = mapView.mapboxMap
-
-
             mapboxMap.loadStyle(Style.MAPBOX_STREETS) {
                     mapView.location.updateSettings {
                         enabled = true
@@ -97,13 +91,9 @@ class HomeFragment : Fragment() {
                     else -> false
                 }
             }
-
         }
-
         return binding.root
     }
-
-
 
     override fun onStart() {
         super.onStart()

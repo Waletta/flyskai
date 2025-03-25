@@ -3,6 +3,8 @@ package com.example.flyskai.ui.home
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import model.Coordinates
+import model.LocationState
 
 class HomeViewModel : ViewModel() {
 
@@ -24,11 +26,8 @@ class HomeViewModel : ViewModel() {
         value = "Waiting for GPS..."
     }
 
-    // private val _coordinates = MutableLiveData<String>("Waiting for GPS...")
-
 
     fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float) {
-        // Update consolidated state
         val speedKmh = speed * 3.6f
         _locationState.value = LocationState(
             coordinates = Coordinates(lat, lon),
@@ -40,21 +39,5 @@ class HomeViewModel : ViewModel() {
         // Update individual properties
         _speed.value = speed
         _altitude.value = altitude
-//        _coordinates.value = "📍 Lat: ${"%.6f".format(lat)}\n🧭 Lon: ${"%.6f".format(lon)}"
     }
-
-
 }
-
-// Data classes for structured state
-data class LocationState(
-    val coordinates: Coordinates,
-    val speed: Float,     // km/h
-    val altitude: Double, // meters
-    val bearing: Float    // degrees
-)
-
-data class Coordinates(
-    val latitude: Double,
-    val longitude: Double
-)
