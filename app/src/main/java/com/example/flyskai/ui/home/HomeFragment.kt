@@ -1,20 +1,16 @@
 package com.example.flyskai.ui.home
 
+import android.app.Fragment
 import android.content.Context
 import com.mapbox.common.TileStore
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import com.example.flyskai.databinding.FragmentHomeBinding
 import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.locationcomponent.location
-import java.util.Locale
-import android.widget.Toast
-import androidx.fragment.app.activityViewModels
-
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.mapbox.geojson.Point
 import com.mapbox.maps.plugin.animation.easeTo
 import com.example.flyskai.R
@@ -29,7 +25,6 @@ import com.mapbox.maps.CameraOptions
 
 import com.mapbox.maps.CoordinateBounds
 import com.mapbox.maps.OfflineManager
-
 
 
 class HomeFragment : Fragment() {

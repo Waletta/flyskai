@@ -3,12 +3,10 @@ package com.example.flyskai
 import android.Manifest
 import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.Menu
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
