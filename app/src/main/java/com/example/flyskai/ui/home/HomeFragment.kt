@@ -1,5 +1,6 @@
 package com.example.flyskai.ui.home
 
+import android.content.Context
 import com.mapbox.common.TileStore
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,6 +13,7 @@ import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.locationcomponent.location
 import java.util.Locale
 import android.widget.Toast
+import androidx.fragment.app.activityViewModels
 
 import com.mapbox.geojson.Point
 import com.mapbox.maps.plugin.animation.easeTo
@@ -28,6 +30,8 @@ import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.CoordinateBounds
 import com.mapbox.maps.OfflineManager
 
+
+
 class HomeFragment : Fragment() {
 
     private var _binding: FragmentHomeBinding? = null
@@ -36,23 +40,20 @@ class HomeFragment : Fragment() {
     private var lastKnownLocation: Point? = null
     private lateinit var mapView: MapView
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+    }
+
+    override fun onDetach() {
+        super.onDetach()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
             _binding = FragmentHomeBinding.inflate(inflater, container, false)
-            val homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
-
-            homeViewModel.speed.observe(viewLifecycleOwner) { speed ->
-                val displayedSpeed = speed ?: 0f
-                binding.textSpeed.text = String.format(Locale.US, "Speed: %.1f km/h", displayedSpeed)
-            }
-
-            homeViewModel.altitude.observe(viewLifecycleOwner) { alt ->
-                val displayedAlt = alt ?: 0.0
-                binding.textAltitude.text = String.format(Locale.US, "Altitude: %.1f m", displayedAlt)
-            }
 
             val mapInitOptions = MapInitOptions(requireContext())
             mapView = MapView(requireContext(), mapInitOptions)
@@ -81,30 +82,33 @@ class HomeFragment : Fragment() {
                 }
             }
 
-                binding.bottomNavigation.setOnItemSelectedListener { item ->
-                    when (item.itemId) {
-                        R.id.navigation_center -> {
-                            lastKnownLocation?.let { point ->
-                                mapView.mapboxMap.easeTo(
-                                    CameraOptions.Builder()
-                                        .center(point)
-                                        .zoom(14.0)
-                                        .build()
-                                )
-                            }
-                            true
+            binding.bottomNavigation.setOnItemSelectedListener { item ->
+                when (item.itemId) {
+                    R.id.navigation_center -> {
+                        lastKnownLocation?.let { point ->
+                            mapView.mapboxMap.easeTo(
+                                CameraOptions.Builder()
+                                    .center(point)
+                                    .zoom(14.0)
+                                    .build()
+                            )
                         }
-                        R.id.navigation_download  -> {
-                            preloadTileRegion()
-                            true
-                        }
-                        else -> false
+                        true
                     }
+                    R.id.navigation_download  -> {
+                        preloadTileRegion()
+                        true
+                    }
+                    else -> false
                 }
+            }
 
         }
+
         return binding.root
     }
+
+
 
     override fun onStart() {
         super.onStart()
@@ -122,6 +126,7 @@ class HomeFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+
 
     private fun preloadTileRegion() {
 

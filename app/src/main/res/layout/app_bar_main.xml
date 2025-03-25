@@ -11,12 +11,36 @@
         android:layout_height="wrap_content"
         android:theme="@style/Theme.FlyskAI.AppBarOverlay">
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            app:popupTheme="@style/Theme.FlyskAI.PopupOverlay" />
+
+
+        <!-- Add TextViews here -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:layout_gravity="center_vertical"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="4dp">
+
+            <TextView
+                android:id="@+id/toolbarSpeed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Speed: -- km/h"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"
+                android:paddingStart="2dp"
+                android:paddingEnd="8dp"/>
+
+            <TextView
+                android:id="@+id/toolbarAltitude"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Altitude: -- m"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
 

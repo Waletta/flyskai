@@ -1,40 +1,39 @@
 package com.example.flyskai
 
 import android.Manifest
+import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.Menu
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.navigation.ui.setupWithNavController
 import com.example.flyskai.databinding.ActivityMainBinding
-import com.google.android.material.navigation.NavigationView
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import androidx.lifecycle.ViewModelProvider
-import com.example.flyskai.ui.home.HomeViewModel
-
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var homeViewModel: HomeViewModel
+    private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val locationPermissionRequest = 100
@@ -61,13 +60,13 @@ class MainActivity : AppCompatActivity() {
                     CoroutineScope(Dispatchers.Default).launch {
                         val lat = location.latitude
                         val lon = location.longitude
-                        val speed = location.speed * 3.6f
+                        val speedMs = location.speed
                         val altitude = location.altitude
                         val bearing = location.bearing
 
                         // Update ViewModel on main thread
                         withContext(Dispatchers.Main) {
-                            homeViewModel.updateLocationData(lat, lon, speed, altitude, bearing)
+                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing)
                         }
                     }
                 }
@@ -76,9 +75,8 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
-
-        setSupportActionBar(binding.appBarMain.toolbar)
+        setupToolbarObservers()
+        // setSupportActionBar(binding.appBarMain.toolbar)
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
         // Passing each menu ID as a set of Ids because each
@@ -107,6 +105,21 @@ class MainActivity : AppCompatActivity() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
+    private fun setupToolbarObservers() {
+        homeViewModel.locationState.observe(this) { state ->
+            // Update speed TextView (using actual XML ID)
+            binding.appBarMain.toolbarSpeed.text = when {
+                state.speed < 0 -> "Speed: -- km/h"
+                else -> "Speed: ${"%.1f".format(state.speed)} km/h"
+            }
+
+            // Update altitude TextView
+            binding.appBarMain.toolbarAltitude.text = when {
+                state.altitude == 0.0 -> "Altitude: -- m"
+                else -> "Altitude: ${"%.1f".format(state.altitude)} m"
+            }
+        }
+    }
 
     private fun checkPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(

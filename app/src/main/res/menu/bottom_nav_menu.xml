@@ -6,8 +6,6 @@
         android:icon="@drawable/ic_menu_home"
         android:title="" />
 
-
-
     <item
         android:id="@+id/navigation_download"
         android:icon="@drawable/baseline_add_a_photo_24"

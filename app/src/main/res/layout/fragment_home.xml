@@ -32,43 +32,43 @@
         app:layout_constraintEnd_toEndOf="parent"/>
 
 
-    <TextView
-        android:id="@+id/textAltitude"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Altitude: -- m"
-        android:textSize="12sp"
-        android:textColor="@android:color/white"
-        android:padding="4dp"
-        android:shadowColor="#AA000000"
+<!--    <TextView-->
+<!--        android:id="@+id/textAltitude"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="Altitude: &#45;&#45; m"-->
+<!--        android:textSize="12sp"-->
+<!--        android:textColor="@android:color/white"-->
+<!--        android:padding="4dp"-->
+<!--        android:shadowColor="#AA000000"-->
 
-        android:shadowDx="4"
-        android:shadowDy="4"
-        android:shadowRadius="1"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="2dp"
-        app:layout_constraintBottom_toTopOf="@id/textSpeed"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:text="Altitude: 1234 m" />
+<!--        android:shadowDx="4"-->
+<!--        android:shadowDy="4"-->
+<!--        android:shadowRadius="1"-->
+<!--        android:layout_marginEnd="8dp"-->
+<!--        android:layout_marginBottom="2dp"-->
+<!--        app:layout_constraintBottom_toTopOf="@id/textSpeed"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        tools:text="Altitude: 1234 m" />-->
 
-    <TextView
-        android:id="@+id/textSpeed"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Speed: -- km/h"
-        android:textSize="12sp"
-        android:textColor="@android:color/white"
-        android:padding="4dp"
-        android:shadowColor="#AA000000"
-        android:shadowDx="4"
-        android:shadowDy="4"
-        android:shadowRadius="1"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:text="Speed: 75.0 km/h" />
+<!--    <TextView-->
+<!--        android:id="@+id/textSpeed"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="Speed: &#45;&#45; km/h"-->
+<!--        android:textSize="12sp"-->
+<!--        android:textColor="@android:color/white"-->
+<!--        android:padding="4dp"-->
+<!--        android:shadowColor="#AA000000"-->
+<!--        android:shadowDx="4"-->
+<!--        android:shadowDy="4"-->
+<!--        android:shadowRadius="1"-->
+<!--        android:layout_marginEnd="8dp"-->
+<!--        android:layout_marginBottom="8dp"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        tools:text="Speed: 75.0 km/h" />-->
 
 
 
