@@ -62,6 +62,8 @@
         implementation(libs.androidx.navigation.fragment.ktx)
         implementation(libs.androidx.navigation.ui.ktx)
         implementation(libs.mapbox.android)
+        implementation(libs.mapbox.extension)
+        implementation(libs.mapbox.turf)
         testImplementation(libs.junit)
         androidTestImplementation(libs.androidx.junit)
         androidTestImplementation(libs.androidx.espresso.core)
