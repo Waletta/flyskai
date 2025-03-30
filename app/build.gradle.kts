@@ -49,11 +49,7 @@
         implementation(libs.androidx.activity.compose)
         implementation(libs.androidx.lifecycle.runtime.ktx)
         implementation(libs.androidx.ui.graphics)
-        androidTestImplementation(platform(libs.androidx.compose.bom))
-        androidTestImplementation(libs.androidx.ui.test.junit4)
-        debugImplementation(libs.androidx.compose.ui.tooling)
-        debugImplementation(libs.androidx.compose.ui.test.manifest)
-        implementation(libs.androidx.core.ktx)
+         implementation(libs.androidx.core.ktx)
         implementation(libs.androidx.appcompat)
         implementation(libs.material)
         implementation(libs.androidx.constraintlayout)
@@ -61,11 +57,18 @@
         implementation(libs.androidx.lifecycle.viewmodel.ktx)
         implementation(libs.androidx.navigation.fragment.ktx)
         implementation(libs.androidx.navigation.ui.ktx)
+
+        implementation(libs.play.services.location)
         implementation(libs.mapbox.android)
         implementation(libs.mapbox.extension)
         implementation(libs.mapbox.turf)
+
+        androidTestImplementation(platform(libs.androidx.compose.bom))
+        androidTestImplementation(libs.androidx.ui.test.junit4)
+        debugImplementation(libs.androidx.compose.ui.tooling)
+        debugImplementation(libs.androidx.compose.ui.test.manifest)
         testImplementation(libs.junit)
         androidTestImplementation(libs.androidx.junit)
         androidTestImplementation(libs.androidx.espresso.core)
-        implementation(libs.play.services.location)
+
     }
