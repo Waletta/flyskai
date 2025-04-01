@@ -62,7 +62,6 @@ class MainActivity : AppCompatActivity() {
                         val altitude = location.altitude
                         val bearing = location.bearing
 
-                        // Update ViewModel on main thread
                         withContext(Dispatchers.Main) {
                             homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing)
                         }
@@ -74,11 +73,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupToolbarObservers()
-        // setSupportActionBar(binding.appBarMain.toolbar)
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
         appBarConfiguration = AppBarConfiguration(
             setOf(
                 R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
@@ -105,16 +101,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupToolbarObservers() {
         homeViewModel.locationState.observe(this) { state ->
-            // Update speed TextView (using actual XML ID)
             binding.appBarMain.toolbarSpeed.text = when {
                 state.speed < 0 -> "Speed: -- km/h"
-                else -> "Speed: ${"%.1f".format(state.speed)} km/h"
+                else -> ("Speed: " + state?.speed?.takeIf { it >= 0 }?.toInt()?.toString() + " km/h")
             }
 
             // Update altitude TextView
             binding.appBarMain.toolbarAltitude.text = when {
                 state.altitude == 0.0 -> "Altitude: -- m"
-                else -> "Altitude: ${"%.1f".format(state.altitude)} m"
+                else -> ("Altitude: " + state?.altitude?.takeIf { it >= 0 }?.toInt()?.toString() + " m")
+            }
+
+            binding.appBarMain.toolbarBearing.text = when {
+                state.bearing == 0.0f -> " Bearing: --°"
+                else -> " Bearing: ${state.bearing.toInt()}°"
             }
         }
     }

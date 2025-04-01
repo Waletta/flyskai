@@ -39,5 +39,6 @@ class HomeViewModel : ViewModel() {
         // Update individual properties
         _speed.value = speed
         _altitude.value = altitude
+        _bearing.value= bearing
     }
 }

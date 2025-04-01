@@ -2,17 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_menu_home"
-        android:title="" />
-
-    <item
-        android:id="@+id/navigation_download"
-        android:icon="@drawable/baseline_add_a_photo_24"
-        android:title="" />
-
-
-    <item
         android:id="@+id/navigation_center"
         android:icon="@drawable/baseline_my_location_24"
         android:title="" />

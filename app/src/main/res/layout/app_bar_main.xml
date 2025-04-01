@@ -21,7 +21,7 @@
             android:layout_gravity="center_vertical"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="4dp">
+            android:padding="10dp">
 
             <TextView
                 android:id="@+id/toolbarSpeed"
@@ -40,6 +40,15 @@
                 android:text="Altitude: -- m"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"/>
+
+
+            <TextView
+                android:id="@+id/toolbarBearing"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" Bearing: --°"
+                android:textSize="12sp"
+                android:textColor="@android:color/white" />
         </LinearLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
