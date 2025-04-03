@@ -120,29 +120,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupToolbarObservers() {
         homeViewModel.locationState.observe(this) { state ->
-
-            binding.appBarMain.toolbarSpeed.text = when {
-                state.speed < 0 -> "Speed: -- km/h"
-                else -> ("Speed: " + state?.speed?.takeIf { it >= 0 }?.toInt()?.toString() + " km/h")
-            }
-
-            // Update altitude TextView
-            binding.appBarMain.toolbarAltitude.text = when {
-                state.altitude == 0.0 -> "Altitude: -- m"
-                else -> ("Altitude: " + state?.altitude?.takeIf { it >= 0 }?.toInt()?.toString() + " m")
-            }
-
             val track = state.bearing
             val heading = homeViewModel.heading.value ?: 0f
-
-            binding.appBarMain.composeCockpitView.setContent {
+             binding.appBarMain.composeCockpitView.setContent {
                 CockPit(track = track, heading = heading,
                     speed = state.speed,      // add your speed value here
                     altitude = state.altitude.toFloat())
             }
         }
     }
-
     private fun checkPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION

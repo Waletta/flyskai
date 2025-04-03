@@ -14,40 +14,13 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:layout_gravity="center_vertical"
             android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:padding="10dp">
-
-            <TextView
-                android:id="@+id/toolbarSpeed"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Speed: -- km/h"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"
-                android:paddingBottom="4dp"
-                android:paddingStart="2dp"
-                android:paddingEnd="8dp" />
-
-            <TextView
-                android:id="@+id/toolbarAltitude"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Altitude: -- m"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"
-                android:paddingBottom="4dp" />
+            >
 
             <androidx.compose.ui.platform.ComposeView
                 android:id="@+id/composeCockpitView"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="4dp"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"/>
+                android:layout_height="wrap_content"/>
         </LinearLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
