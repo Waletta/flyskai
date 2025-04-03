@@ -18,6 +18,11 @@ class HomeViewModel : ViewModel() {
         value = 0.00
     }
 
+    private val _heading = MutableLiveData<Float>().apply {
+        value = 0f
+    }
+    val heading: LiveData<Float> = _heading
+
     private val _bearing = MutableLiveData<Float>().apply {
         value = 0f
     }
@@ -26,6 +31,10 @@ class HomeViewModel : ViewModel() {
         value = "Waiting for GPS..."
     }
 
+
+    fun updateDeviceHeading(azimuth: Float) {
+        _heading.value = azimuth
+    }
 
     fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float) {
         val speedKmh = speed * 3.6f

@@ -13,7 +13,7 @@
             minSdk = 26
             targetSdk = 35
             versionCode = 1
-            versionName = "1.0"
+            versionName = "1.1"
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
@@ -47,9 +47,11 @@
         implementation(libs.androidx.compose.material3)
         implementation(libs.androidx.compose.ui.tooling.preview)
         implementation(libs.androidx.activity.compose)
+        androidTestImplementation(platform(libs.androidx.compose.bom))
+
         implementation(libs.androidx.lifecycle.runtime.ktx)
         implementation(libs.androidx.ui.graphics)
-         implementation(libs.androidx.core.ktx)
+        implementation(libs.androidx.core.ktx)
         implementation(libs.androidx.appcompat)
         implementation(libs.material)
         implementation(libs.androidx.constraintlayout)
@@ -63,7 +65,6 @@
         implementation(libs.mapbox.extension)
         implementation(libs.mapbox.turf)
 
-        androidTestImplementation(platform(libs.androidx.compose.bom))
         androidTestImplementation(libs.androidx.ui.test.junit4)
         debugImplementation(libs.androidx.compose.ui.tooling)
         debugImplementation(libs.androidx.compose.ui.test.manifest)

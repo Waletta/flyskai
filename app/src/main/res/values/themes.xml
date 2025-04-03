@@ -20,6 +20,5 @@
     </style>
 
     <style name="Theme.FlyskAI.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
-
     <style name="Theme.FlyskAI.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 </resources>

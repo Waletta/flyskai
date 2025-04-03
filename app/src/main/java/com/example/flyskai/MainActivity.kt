@@ -1,8 +1,13 @@
 package com.example.flyskai
 
 import android.Manifest
+import com.example.flyskai.ui.components.CockPit
 import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -37,10 +42,17 @@ class MainActivity : AppCompatActivity() {
     private val locationPermissionRequest = 100
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
+    private lateinit var sensorManager: SensorManager
+    private lateinit var rotationSensor: Sensor
+    private val rotationMatrix = FloatArray(9)
+    private val orientationAngles = FloatArray(3)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+            ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -87,20 +99,28 @@ class MainActivity : AppCompatActivity() {
             requestPermission()
         }
     }
-
-
+    
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         return true
     }
 
+    override fun onResume() {
+        super.onResume()
+        rotationSensor.also {
+            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_UI)
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        sensorManager.unregisterListener(sensorListener)
     }
 
     private fun setupToolbarObservers() {
         homeViewModel.locationState.observe(this) { state ->
+
             binding.appBarMain.toolbarSpeed.text = when {
                 state.speed < 0 -> "Speed: -- km/h"
                 else -> ("Speed: " + state?.speed?.takeIf { it >= 0 }?.toInt()?.toString() + " km/h")
@@ -112,9 +132,13 @@ class MainActivity : AppCompatActivity() {
                 else -> ("Altitude: " + state?.altitude?.takeIf { it >= 0 }?.toInt()?.toString() + " m")
             }
 
-            binding.appBarMain.toolbarBearing.text = when {
-                state.bearing == 0.0f -> " Bearing: --°"
-                else -> " Bearing: ${state.bearing.toInt()}°"
+            val track = state.bearing
+            val heading = homeViewModel.heading.value ?: 0f
+
+            binding.appBarMain.composeCockpitView.setContent {
+                CockPit(track = track, heading = heading,
+                    speed = state.speed,      // add your speed value here
+                    altitude = state.altitude.toFloat())
             }
         }
     }
@@ -136,6 +160,19 @@ class MainActivity : AppCompatActivity() {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
             locationPermissionRequest
         )
+    }
+
+    private val sensorListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent?) {
+            if (event?.sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                SensorManager.getOrientation(rotationMatrix, orientationAngles)
+                val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
+                homeViewModel.updateDeviceHeading((azimuth + 360) % 360)
+            }
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
     private fun startLocationUpdates() {

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -12,15 +11,13 @@
         android:theme="@style/Theme.FlyskAI.AppBarOverlay">
 
 
-
-        <!-- Add TextViews here -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
             android:layout_gravity="center_vertical"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
             android:padding="10dp">
 
             <TextView
@@ -30,8 +27,9 @@
                 android:text="Speed: -- km/h"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"
+                android:paddingBottom="4dp"
                 android:paddingStart="2dp"
-                android:paddingEnd="8dp"/>
+                android:paddingEnd="8dp" />
 
             <TextView
                 android:id="@+id/toolbarAltitude"
@@ -39,16 +37,17 @@
                 android:layout_height="wrap_content"
                 android:text="Altitude: -- m"
                 android:textSize="12sp"
-                android:textColor="@android:color/white"/>
+                android:textColor="@android:color/white"
+                android:paddingBottom="4dp" />
 
-
-            <TextView
-                android:id="@+id/toolbarBearing"
+            <androidx.compose.ui.platform.ComposeView
+                android:id="@+id/composeCockpitView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=" Bearing: --°"
-                android:textSize="12sp"
-                android:textColor="@android:color/white" />
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"/>
         </LinearLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
