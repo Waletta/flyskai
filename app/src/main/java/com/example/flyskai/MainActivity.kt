@@ -56,17 +56,16 @@ class MainActivity : AppCompatActivity() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        locationRequest = LocationRequest.Builder(1_000L)
-            .setMinUpdateIntervalMillis(500L)             // Fastest interval of 0.5 seconds
+        locationRequest = LocationRequest.Builder(1000L)
+            .setMinUpdateIntervalMillis(0L)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-            .setMaxUpdateDelayMillis(2_000L)             // Maximum delay between updates
-            .setMinUpdateDistanceMeters(2f)
+            .setMaxUpdateDelayMillis(1000L)
+            .setMinUpdateDistanceMeters(1f)
             .build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
-                    // Process on background thread to avoid blocking UI
                     CoroutineScope(Dispatchers.Default).launch {
                         val lat = location.latitude
                         val lon = location.longitude
@@ -89,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         val drawerLayout: DrawerLayout = binding.drawerLayout
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow
+                R.id.nav_home
             ), drawerLayout
         )
 
@@ -154,7 +153,9 @@ class MainActivity : AppCompatActivity() {
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                 SensorManager.getOrientation(rotationMatrix, orientationAngles)
                 val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                homeViewModel.updateDeviceHeading((azimuth + 360) % 360)
+                val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
+                val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
+                homeViewModel.updateDeviceHeading(pitch, bank, (azimuth + 360) % 360)
             }
         }
 

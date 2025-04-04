@@ -14,13 +14,17 @@ googlePlayServicesLocation = "21.3.0"
 mapbox-vlast = "11.11.0"
 mapbox-turf-version = "7.3.2"
 
+retrofit = "2.9.0"
+moshi = "1.13.0"
+
+
 compose = "1.7.8"
 composeBom = "2025.03.01"
 activityCompose = "1.10.1"
 lifecycleRuntimeKtx = "2.8.7"
 
 # Styles
-material = "1.12.0"
+material = "1.7.8"
 material3 = "1.3.1"
 
 # Tests
@@ -32,7 +36,9 @@ espressoCore = "3.6.1"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+material = { group = "androidx.compose.material", name = "material", version.ref = "material" }
+
+
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycleLivedataKtx" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
@@ -44,6 +50,11 @@ mapbox-android = { module = "com.mapbox.maps:android", version.ref = "mapbox-vla
 mapbox-turf = { module = "com.mapbox.mapboxsdk:mapbox-sdk-turf", version.ref = "mapbox-turf-version" }
 mapbox-extension = { module = "com.mapbox.extension:maps-compose", version.ref = "mapbox-vlast" }
 
+retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
+converter-moshi = { module = "com.squareup.retrofit2:converter-moshi", version.ref = "retrofit" }
+moshi-kotlin = { module = "com.squareup.moshi:moshi-kotlin", version.ref = "moshi" }
+
+
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 
@@ -53,6 +64,7 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref 
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "compose" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "compose" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest", version.ref = "compose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }

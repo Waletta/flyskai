@@ -11,29 +11,27 @@ class HomeViewModel : ViewModel() {
     private val _locationState = MutableLiveData<LocationState>()
     val locationState: LiveData<LocationState> = _locationState
 
-    private val _speed = MutableLiveData<Float>().apply {
-        value = 0f
-    }   // in m/s
-    private val _altitude = MutableLiveData<Double>().apply {
-        value = 0.00
-    }
-
     private val _heading = MutableLiveData<Float>().apply {
         value = 0f
     }
-    val heading: LiveData<Float> = _heading
 
-    private val _bearing = MutableLiveData<Float>().apply {
+    private val _pitch = MutableLiveData<Float>().apply {
+        value = 0f
+    }
+    private val _bank = MutableLiveData<Float>().apply {
         value = 0f
     }
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "Waiting for GPS..."
-    }
+
+    val heading: LiveData<Float> = _heading
+    val pitch: LiveData<Float> = _pitch
+    val bank: LiveData<Float> = _bank
 
 
-    fun updateDeviceHeading(azimuth: Float) {
+    fun updateDeviceHeading(pitch: Float, bank: Float, azimuth: Float) {
         _heading.value = azimuth
+        _pitch.value = pitch
+        _bank.value = bank
     }
 
     fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float) {
@@ -44,10 +42,5 @@ class HomeViewModel : ViewModel() {
             altitude = altitude,
             bearing = bearing
         )
-
-        // Update individual properties
-        _speed.value = speed
-        _altitude.value = altitude
-        _bearing.value= bearing
     }
 }

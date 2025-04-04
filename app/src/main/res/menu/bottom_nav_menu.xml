@@ -2,8 +2,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/navigation_lookaround"
+        android:icon="@drawable/baseline_looks_24"
+        android:title=""/>
+
+    <item
         android:id="@+id/navigation_center"
         android:icon="@drawable/baseline_my_location_24"
-        android:title="" />
+        android:title=""/>
 
+    <item
+        android:id="@+id/navigation_unit"
+        android:icon="@drawable/baseline_conveyor_belt_24"
+        android:title=""/>
 </menu>
