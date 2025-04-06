@@ -31,7 +31,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
 import com.example.flyskai.AltitudeUnit
-import model.TakeoffPhase
+import model.FlightPhase
 
 
 @Composable
@@ -41,7 +41,7 @@ fun CockPit(
     speed: Float,
     altitude: Float,
     verticalSpeed: Float,
-    takeoffPhase: TakeoffPhase,
+    flightPhase: FlightPhase,
     pitch: Float = 0f,
     bank: Float = 0f,
 ) {
@@ -49,7 +49,6 @@ fun CockPit(
         if (it > 180) it - 360 else it
     }
 
-    val currentUnitSystem = AppSettings.unitSystem.value
     val speedUnit = maxOf(0, formatSpeed(speed))
     val altitudeUnit = maxOf(0, formatAltitude(altitude))
 
@@ -60,16 +59,6 @@ fun CockPit(
             .height(240.dp)
             .fillMaxWidth()
     ) {
-            Text(
-                text = "Phase: ${takeoffPhase.name}",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(10.dp)
-            )
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -83,9 +72,9 @@ fun CockPit(
                 highlightColor = Color.Magenta
             )
 
-            // Compass + Track
+            // Compass
             Box(modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth(0.6f)
                 .aspectRatio(1f)
                 .padding(bottom = 16.dp)) {
                 HeadingTrackCompass(track, heading, pitch, bank, drift, verticalSpeed)
@@ -112,7 +101,7 @@ fun SpeedAltitudeTape(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(60.dp)
+        modifier = Modifier.width(80.dp)
     ) {
         for (i in tapeRange downTo 1) {
             val v = value - i * 10
@@ -156,6 +145,57 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
         rotate(-bank, pivot = center) {
             val pitchOffset = pitch * 3  // scale pitch visually
 
+//            val pitchStep = 10
+//            val ladderSpacing = 12f  // pixels per degree of pitch
+//
+//            val ladderPaint = android.graphics.Paint().apply {
+//                color = android.graphics.Color.WHITE
+//                textAlign = android.graphics.Paint.Align.CENTER
+//                textSize = 24f
+//                isFakeBoldText = true
+//            }
+
+//            for (i in -3..3) {
+//                val pitchAngle = i * pitchStep
+//                if (pitchAngle == 0) continue // skip the center horizon line
+//
+//                val yOffset = center.y + pitchOffset - pitchAngle * ladderSpacing
+//                val lineLength = if (pitchAngle % 20 == 0) 80f else 40f
+//
+//                val isDashed = pitchAngle % 20 != 0
+//
+//                if (isDashed) {
+//                    // Draw dashed line
+//                    val path = Path().apply {
+//                        moveTo(center.x - lineLength / 2, yOffset)
+//                        lineTo(center.x + lineLength / 2, yOffset)
+//                    }
+//                    drawPath(
+//                        path = path,
+//                        color = Color.White,
+//                        style = Stroke(
+//                            width = 2f,
+//                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+//                        )
+//                    )
+//                } else {
+//                    // Solid line
+//                    drawLine(
+//                        color = Color.White,
+//                        start = Offset(center.x - lineLength / 2, yOffset),
+//                        end = Offset(center.x + lineLength / 2, yOffset),
+//                        strokeWidth = 2f
+//                    )
+//                }
+//
+//                // Labels
+//                drawContext.canvas.nativeCanvas.apply {
+//                    val label = "${if (pitchAngle > 0) "+" else ""}$pitchAngle"
+//                    drawText(label, center.x - lineLength / 2 - 20f, yOffset + 8f, ladderPaint)
+//                    drawText(label, center.x + lineLength / 2 + 20f, yOffset + 8f, ladderPaint)
+//                }
+//            }
+
             drawRect(
                 color = Color(0xFF4FC3F7), // Sky blue
                 topLeft = Offset(0f, center.y - radius + pitchOffset),
@@ -177,7 +217,6 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
         // COMPASS ROSE
         rotate(-heading, pivot = center) {
             drawCircle(color = Color.DarkGray, center = center, radius = radius)
-
             val directions = listOf("N" to 0f, "E" to 90f, "S" to 180f, "W" to 270f)
             val textPaint = android.graphics.Paint().apply {
                 color = android.graphics.Color.WHITE
@@ -237,38 +276,37 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
             textSize = 32f
         }
 
+        // DRIFT
         drawContext.canvas.nativeCanvas.apply {
-//            labelPaint.color = android.graphics.Color.CYAN
-//            drawText("HDG ${heading.toInt()}°", center.x, center.y + radius + 40f, labelPaint)
-//
-//            labelPaint.color = android.graphics.Color.GREEN
-//            drawText("TRK [${track.toInt()}] MAG", center.x, center.y + radius + 80f, labelPaint)
-
             labelPaint.color = android.graphics.Color.MAGENTA
             drawText(
                 "DRIFT ${if (drift >= 0) "+%.0f° R" else "%.0f° L".format(-drift)}".format(drift),
                 center.x,
-                center.y + radius + 50f,
+                center.y + radius + 80f,
                 labelPaint
             )
 
-            // VSI Calculation
+            // VSI
             val vsi = formatVerticalSpeed(verticalSpeed)
             val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "ft/min" else "m/min"
-
             labelPaint.color = android.graphics.Color.YELLOW
             drawText(
                 "VSI ${if (vsi >= 0) "+" else ""}${vsi} $vsiLabel",
                 center.x,
-                center.y + radius + 90f,
+                center.y + radius + 120f,
                 labelPaint
             )
 
-//            labelPaint.color = android.graphics.Color.YELLOW
-//            drawText("PITCH ${pitch.toInt()}°", center.x, center.y - radius - 40f, labelPaint)
-//
-//            labelPaint.color = android.graphics.Color.LTGRAY
-//            drawText("BANK ${bank.toInt()}°", center.x, center.y - radius - 80f, labelPaint)
+            // BANK ANGLE
+            labelPaint.color = android.graphics.Color.LTGRAY
+            val bankText = "${bank.toInt()}°"
+            val textYOffset = center.y - radius - 80f
+            val textXOffset = 80f
+            when {
+                bank > 5f -> drawText(bankText, center.x + textXOffset, textYOffset, labelPaint)
+                bank < -5f -> drawText(bankText, center.x - textXOffset, textYOffset, labelPaint)
+            }
+
         }
     }
 }

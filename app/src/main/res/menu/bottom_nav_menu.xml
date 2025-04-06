@@ -2,9 +2,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/navigation_lookaround"
-        android:icon="@drawable/baseline_looks_24"
+        android:id="@+id/navigation_onboard"
+        android:icon="@drawable/baseline_connecting_airports_24"
         android:title=""/>
+
+<!--    <item-->
+<!--        android:id="@+id/navigation_lookaround"-->
+<!--        android:icon="@drawable/baseline_looks_24"-->
+<!--        android:title=""/>-->
 
     <item
         android:id="@+id/navigation_center"

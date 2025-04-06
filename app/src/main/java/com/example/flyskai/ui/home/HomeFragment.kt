@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
@@ -47,6 +48,12 @@ class HomeFragment : Fragment() {
 
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
+                R.id.navigation_onboard -> {
+                    val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
+                    menuItem.setIcon(R.drawable.baseline_airline_seat_recline_extra_24)
+                    Toast.makeText(requireContext(), "You’re strapped in.\nLet’s fly this bird!", Toast.LENGTH_LONG).show()
+                    true
+                }
                 R.id.navigation_center -> {
                     centerCameraOnLocation()
                     true
@@ -55,10 +62,10 @@ class HomeFragment : Fragment() {
                     AppSettings.toggleUnitSystem()
                     true
                 }
-                R.id.navigation_lookaround -> {
-                    fetchNearbyFlights()
-                    true
-                }
+//                R.id.navigation_lookaround -> {
+//                    fetchNearbyFlights()
+//                    true
+//                }
                 else -> false
             }
         }
@@ -105,7 +112,6 @@ class HomeFragment : Fragment() {
 
 
     // OpenSky Basic Starts here
-
     private fun fetchNearbyFlights() {
         val location = lastKnownLocation ?: return
 
@@ -142,7 +148,6 @@ class HomeFragment : Fragment() {
 
 
     data class FlightPosition(val icao24: String, val callsign: String?, val lat: Double, val lon: Double)
-
     private fun parseOpenSkyFlights(json: String): List<FlightPosition> {
         val result = mutableListOf<FlightPosition>()
         val jsonObject = org.json.JSONObject(json)
@@ -183,13 +188,11 @@ class HomeFragment : Fragment() {
                 .withIconImage(bitmap)
                 .withTextField(flight.callsign ?: flight.icao24)
                 .withTextOffset(listOf(0.0, 1.5))
-                .withTextSize(12.0) // 🔽 Smaller text (default is around 16–18)
-
-
+                .withTextSize(12.0)
             pointAnnotationManager.create(options)
         }
     }
 
-    ////
+
 
 }

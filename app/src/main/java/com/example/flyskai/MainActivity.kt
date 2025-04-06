@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
                     speed = state.speed,
                     altitude = state.altitude.toFloat(),
                     verticalSpeed = state.verticalSpeed,
-                    takeoffPhase = state.takeoffPhase)
+                    flightPhase = state.flightPhase)
             }
         }
     }
