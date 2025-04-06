@@ -1,5 +1,10 @@
 package com.example.flyskai
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.MutableState
+
 enum class UnitSystem {
     METRIC, IMPERIAL;
 
@@ -7,22 +12,22 @@ enum class UnitSystem {
 }
 
 object AppSettings {
-    var unitSystem: UnitSystem = UnitSystem.METRIC
+    val unitSystem: MutableState<UnitSystem> = mutableStateOf(UnitSystem.IMPERIAL)
 
     val speedUnit: SpeedUnit
-        get() = if (unitSystem == UnitSystem.METRIC) SpeedUnit.KMH else SpeedUnit.KNOTS
+        get() = if (unitSystem.value == UnitSystem.METRIC) SpeedUnit.KMH else SpeedUnit.KNOTS
 
     val altitudeUnit: AltitudeUnit
-        get() = if (unitSystem == UnitSystem.METRIC) AltitudeUnit.METERS else AltitudeUnit.FEET
+        get() = if (unitSystem.value == UnitSystem.METRIC) AltitudeUnit.METERS else AltitudeUnit.FEET
 
     fun toggleUnitSystem() {
-        unitSystem = unitSystem.toggle()
+        unitSystem.value = unitSystem.value.toggle()
     }
 }
 
 enum class SpeedUnit {
     KMH, KNOTS;
-    override fun toString() = if (this == KMH) "k/h" else "kt"
+    override fun toString() = if (this == KMH) "km/h" else "kt"
 }
 
 enum class AltitudeUnit {

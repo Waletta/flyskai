@@ -30,6 +30,9 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
+import com.example.flyskai.AltitudeUnit
+import model.TakeoffPhase
+
 
 @Composable
 fun CockPit(
@@ -37,25 +40,36 @@ fun CockPit(
     heading: Float,
     speed: Float,
     altitude: Float,
+    verticalSpeed: Float,
+    takeoffPhase: TakeoffPhase,
     pitch: Float = 0f,
     bank: Float = 0f,
 ) {
-//    val drift = ((track - heading + 360) % 360).let {
-//        if (it > 180) it - 360 else it
-//    }
+    val drift = ((track - heading + 360) % 360).let {
+        if (it > 180) it - 360 else it
+    }
 
+    val currentUnitSystem = AppSettings.unitSystem.value
     val speedUnit = maxOf(0, formatSpeed(speed))
     val altitudeUnit = maxOf(0, formatAltitude(altitude))
 
-
     BankPitchWarningOverlay(bankAngle = bank, pitchAngle = pitch)
-
     Box(
         modifier = Modifier
             .background(Color.Black)
-            .padding(12.dp)
+            .height(240.dp)
             .fillMaxWidth()
     ) {
+            Text(
+                text = "Phase: ${takeoffPhase.name}",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(10.dp)
+            )
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -72,8 +86,9 @@ fun CockPit(
             // Compass + Track
             Box(modifier = Modifier
                 .fillMaxWidth(0.5f)
-                .aspectRatio(1f)) {
-                HeadingTrackCompass(track, heading, pitch, bank)
+                .aspectRatio(1f)
+                .padding(bottom = 16.dp)) {
+                HeadingTrackCompass(track, heading, pitch, bank, drift, verticalSpeed)
             }
 
             // Altitude Tape
@@ -84,6 +99,7 @@ fun CockPit(
                 highlightColor = Color.Magenta
             )
         }
+
     }
 }
 
@@ -100,11 +116,10 @@ fun SpeedAltitudeTape(
     ) {
         for (i in tapeRange downTo 1) {
             val v = value - i * 10
-            if (v < 0) continue // Skip zero repetition
             Text(
                 text = "$v",
                 color = Color.LightGray,
-                fontSize = 12.sp
+                fontSize = 10.sp
             )
         }
 
@@ -117,7 +132,7 @@ fun SpeedAltitudeTape(
                 text = "$value $label",
                 color = Color.Black,
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                fontSize = 10.sp
             )
         }
 
@@ -125,15 +140,14 @@ fun SpeedAltitudeTape(
             Text(
                 text = "${value + i * 10}",
                 color = Color.LightGray,
-                fontSize = 12.sp
+                fontSize = 10.sp
             )
         }
     }
 }
 
-
 @Composable
-fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float) {
+fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float, drift: Float, verticalSpeed: Float) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = size.minDimension / 2f - 12f
@@ -183,15 +197,15 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float)
             }
         }
 
-        // TRACK ARROW
-//        rotate(track - heading, pivot = center) {
-//            drawLine(
-//                color = Color.Green,
-//                start = center,
-//                end = Offset(center.x, center.y - radius),
-//                strokeWidth = 6f
-//            )
-//        }
+     //    TRACK ARROW
+        rotate(track - heading, pivot = center) {
+            drawLine(
+                color = Color.Green,
+                start = center,
+                end = Offset(center.x, center.y - radius),
+                strokeWidth = 6f
+            )
+        }
 
         // HDG ARROW
         drawLine(
@@ -224,21 +238,40 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float)
         }
 
         drawContext.canvas.nativeCanvas.apply {
-            labelPaint.color = android.graphics.Color.CYAN
-            drawText("HDG ${heading.toInt()}°", center.x, center.y + radius + 40f, labelPaint)
-
+//            labelPaint.color = android.graphics.Color.CYAN
+//            drawText("HDG ${heading.toInt()}°", center.x, center.y + radius + 40f, labelPaint)
+//
 //            labelPaint.color = android.graphics.Color.GREEN
-//            drawText("TRK ${track.toInt()}°", center.x, center.y + radius + 80f, labelPaint)
+//            drawText("TRK [${track.toInt()}] MAG", center.x, center.y + radius + 80f, labelPaint)
+
+            labelPaint.color = android.graphics.Color.MAGENTA
+            drawText(
+                "DRIFT ${if (drift >= 0) "+%.0f° R" else "%.0f° L".format(-drift)}".format(drift),
+                center.x,
+                center.y + radius + 50f,
+                labelPaint
+            )
+
+            // VSI Calculation
+            val vsi = formatVerticalSpeed(verticalSpeed)
+            val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "ft/min" else "m/min"
 
             labelPaint.color = android.graphics.Color.YELLOW
-            drawText("PITCH ${pitch.toInt()}°", center.x, center.y - radius - 40f, labelPaint)
+            drawText(
+                "VSI ${if (vsi >= 0) "+" else ""}${vsi} $vsiLabel",
+                center.x,
+                center.y + radius + 90f,
+                labelPaint
+            )
 
-            labelPaint.color = android.graphics.Color.LTGRAY
-            drawText("BANK ${bank.toInt()}°", center.x, center.y - radius - 80f, labelPaint)
+//            labelPaint.color = android.graphics.Color.YELLOW
+//            drawText("PITCH ${pitch.toInt()}°", center.x, center.y - radius - 40f, labelPaint)
+//
+//            labelPaint.color = android.graphics.Color.LTGRAY
+//            drawText("BANK ${bank.toInt()}°", center.x, center.y - radius - 80f, labelPaint)
         }
     }
 }
-
 
 @Composable
 fun FlashingWarningText(text: String) {
@@ -298,6 +331,12 @@ fun BankPitchWarningOverlay(bankAngle: Float, pitchAngle: Float) {
     }
 }
 
+fun formatVerticalSpeed(vs: Float): Int {
+    return when (AppSettings.altitudeUnit) {
+        AltitudeUnit.METERS -> (vs * 60).toInt() // m/s to m/min
+        AltitudeUnit.FEET -> (vs * 196.8504).toInt() // m/s to ft/min
+    }
+}
 
 fun formatSpeed(mps: Float): Int {
     return when (AppSettings.speedUnit) {
@@ -308,8 +347,8 @@ fun formatSpeed(mps: Float): Int {
 
 fun formatAltitude(meters: Float): Int {
     return when (AppSettings.altitudeUnit) {
-        com.example.flyskai.AltitudeUnit.METERS -> meters.toInt()
-        com.example.flyskai.AltitudeUnit.FEET -> (meters * 3.28084).toInt()
+        AltitudeUnit.METERS -> meters.toInt()
+        AltitudeUnit.FEET -> (meters * 3.28084).toInt()
     }
 }
 

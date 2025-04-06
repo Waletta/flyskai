@@ -47,6 +47,9 @@ class MainActivity : AppCompatActivity() {
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
 
+    private var skipFirstFix = false
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,14 +60,17 @@ class MainActivity : AppCompatActivity() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         locationRequest = LocationRequest.Builder(1000L)
-            .setMinUpdateIntervalMillis(0L)
+            .setMinUpdateIntervalMillis(2000L)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-            .setMaxUpdateDelayMillis(1000L)
-            .setMinUpdateDistanceMeters(1f)
+            .setMaxUpdateDelayMillis(4000L)
             .build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
+                if (skipFirstFix) {
+                    skipFirstFix = false
+                    return
+                }
                 locationResult.lastLocation?.let { location ->
                     CoroutineScope(Dispatchers.Default).launch {
                         val lat = location.latitude
@@ -72,7 +78,6 @@ class MainActivity : AppCompatActivity() {
                         val speedMs = location.speed
                         val altitude = location.altitude
                         val bearing = location.bearing
-
                         withContext(Dispatchers.Main) {
                             homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing)
                         }
@@ -106,8 +111,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        rotationSensor.also {
-            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_UI)
+        sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
+        skipFirstFix = true
+        if (checkPermission()) {
+            startLocationUpdates()
         }
     }
 
@@ -123,8 +130,10 @@ class MainActivity : AppCompatActivity() {
             val heading = homeViewModel.heading.value ?: 0f
              binding.appBarMain.composeCockpitView.setContent {
                 CockPit(track = track, heading = heading,
-                    speed = state.speed,      // add your speed value here
-                    altitude = state.altitude.toFloat())
+                    speed = state.speed,
+                    altitude = state.altitude.toFloat(),
+                    verticalSpeed = state.verticalSpeed,
+                    takeoffPhase = state.takeoffPhase)
             }
         }
     }

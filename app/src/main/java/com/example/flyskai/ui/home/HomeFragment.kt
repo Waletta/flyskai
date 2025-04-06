@@ -1,10 +1,11 @@
 package com.example.flyskai.ui.home
 
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import com.example.flyskai.AppSettings
 import com.example.flyskai.R
@@ -162,11 +163,17 @@ class HomeFragment : Fragment() {
         return result
     }
 
-
     private fun showFlightsOnMap(flights: List<FlightPosition>) {
         pointAnnotationManager.deleteAll() // Clear old markers
 
-        val bitmap = BitmapFactory.decodeResource(resources, R.drawable.ic_menu_camera)
+        val drawable = AppCompatResources.getDrawable(requireContext(), R.drawable.ic_aircraft)
+        val bitmap = drawable?.toBitmap()
+
+        if (bitmap == null) {
+            println("❌ Could not decode flight icon bitmap.")
+            return
+        }
+
 
         flights.forEach { flight ->
             val point = Point.fromLngLat(flight.lon, flight.lat)
@@ -176,6 +183,8 @@ class HomeFragment : Fragment() {
                 .withIconImage(bitmap)
                 .withTextField(flight.callsign ?: flight.icao24)
                 .withTextOffset(listOf(0.0, 1.5))
+                .withTextSize(12.0) // 🔽 Smaller text (default is around 16–18)
+
 
             pointAnnotationManager.create(options)
         }
