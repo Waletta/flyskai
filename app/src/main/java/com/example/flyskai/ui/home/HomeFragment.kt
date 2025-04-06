@@ -40,7 +40,11 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-
+        val onboardItemView = binding.bottomNavigation.findViewById<View>(R.id.navigation_onboard)
+        onboardItemView.setOnLongClickListener {
+            showPopover(it, "Tap when you're seated.")
+            true
+        }
         mapView = MapView(requireContext())
         binding.mapContainer.addView(mapView)
 
@@ -191,6 +195,33 @@ class HomeFragment : Fragment() {
                 .withTextSize(12.0)
             pointAnnotationManager.create(options)
         }
+    }
+
+    private fun showPopover(targetView: View, message: String) {
+        val popup = android.widget.PopupWindow(requireContext())
+
+        val textView = android.widget.TextView(requireContext()).apply {
+            text = message
+            setPadding(24, 16, 24, 16)
+            setBackgroundResource(R.drawable.popover_background)
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 14f
+        }
+
+        popup.contentView = textView
+        popup.isOutsideTouchable = true
+        popup.isFocusable = false
+        popup.elevation = 8f
+
+        // Size and position
+        textView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val xOffset = targetView.width / 2 - textView.measuredWidth / 2
+        val yOffset = -targetView.height - textView.measuredHeight
+
+        popup.showAsDropDown(targetView, xOffset, yOffset)
+
+        // Auto dismiss after 3 seconds
+        targetView.postDelayed({ popup.dismiss() }, 3000)
     }
 
 
