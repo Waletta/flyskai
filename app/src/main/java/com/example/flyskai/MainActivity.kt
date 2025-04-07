@@ -4,6 +4,7 @@ import android.Manifest
 import com.example.flyskai.ui.components.CockPit
 import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
+import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -31,6 +32,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import model.Coordinates
+import model.LocationState
 
 
 class MainActivity : AppCompatActivity() {
@@ -48,8 +51,7 @@ class MainActivity : AppCompatActivity() {
     private val orientationAngles = FloatArray(3)
 
     private var skipFirstFix = false
-
-
+    private var lastRotationVector: FloatArray = FloatArray(3)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,8 +80,30 @@ class MainActivity : AppCompatActivity() {
                         val speedMs = location.speed
                         val altitude = location.altitude
                         val bearing = location.bearing
+
+                        // 1. Compute rotation matrix and true heading
+                        val rotationMatrix = FloatArray(9)
+                        val orientation = FloatArray(3)
+                        var trueHeading = 0f
+
+                        rotationSensor.let { sensor ->
+                            SensorManager.getRotationMatrixFromVector(rotationMatrix, lastRotationVector)
+                            SensorManager.getOrientation(rotationMatrix, orientation)
+                            trueHeading = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                            trueHeading = (trueHeading + 360) % 360 // normalize
+                        }
+
+                        // 2. Compute geomagnetic field and magnetic heading
+                        val geoField = GeomagneticField(
+                            lat.toFloat(),
+                            lon.toFloat(),
+                            altitude.toFloat(),
+                            System.currentTimeMillis()
+                        )
+                        val magneticHeading = (trueHeading - geoField.declination + 360) % 360
+
                         withContext(Dispatchers.Main) {
-                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing)
+                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading)
                         }
                     }
                 }
@@ -129,7 +153,7 @@ class MainActivity : AppCompatActivity() {
             val track = state.bearing
             val heading = homeViewModel.heading.value ?: 0f
              binding.appBarMain.composeCockpitView.setContent {
-                CockPit(track = track, heading = heading,
+                CockPit(track = track, trueHeading = state.trueHeading, magneticHeading = state.magneticHeading,
                     speed = state.speed,
                     altitude = state.altitude.toFloat(),
                     verticalSpeed = state.verticalSpeed,

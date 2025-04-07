@@ -1,7 +1,9 @@
 package com.example.flyskai.ui.components
 
+import android.graphics.Typeface
 import com.example.flyskai.R
 import com.example.flyskai.AppSettings
+import java.util.Locale
 
 import android.media.MediaPlayer
 import androidx.compose.animation.core.RepeatMode
@@ -30,14 +32,16 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.font.FontFamily
 import com.example.flyskai.AltitudeUnit
 import model.FlightPhase
-
+import kotlin.math.abs
 
 @Composable
 fun CockPit(
     track: Float,
-    heading: Float,
+    trueHeading: Float,
+    magneticHeading: Float,
     speed: Float,
     altitude: Float,
     verticalSpeed: Float,
@@ -45,7 +49,7 @@ fun CockPit(
     pitch: Float = 0f,
     bank: Float = 0f,
 ) {
-    val drift = ((track - heading + 360) % 360).let {
+    val drift = ((track - magneticHeading + 360) % 360).let {
         if (it > 180) it - 360 else it
     }
 
@@ -72,12 +76,12 @@ fun CockPit(
                 highlightColor = Color.Magenta
             )
 
-            // Compass
+            // Compass Rose
             Box(modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .aspectRatio(1f)
                 .padding(bottom = 16.dp)) {
-                HeadingTrackCompass(track, heading, pitch, bank, drift, verticalSpeed)
+                HeadingTrackCompass(track, trueHeading, magneticHeading, pitch, bank, drift, verticalSpeed)
             }
 
             // Altitude Tape
@@ -93,109 +97,30 @@ fun CockPit(
 }
 
 @Composable
-fun SpeedAltitudeTape(
-    value: Int,
-    label: String,
-    tapeRange: Int,
-    highlightColor: Color
+fun HeadingTrackCompass(
+    track: Float,
+    trueHeading: Float,
+    magneticHeading: Float,
+    pitch: Float,
+    bank: Float,
+    drift: Float,
+    verticalSpeed: Float
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
-    ) {
-        for (i in tapeRange downTo 1) {
-            val v = value - i * 10
-            Text(
-                text = "$v",
-                color = Color.LightGray,
-                fontSize = 10.sp
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .background(highlightColor)
-                .padding(4.dp)
-        ) {
-            Text(
-                text = "$value $label",
-                color = Color.Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.sp
-            )
-        }
-
-        for (i in 1..tapeRange) {
-            Text(
-                text = "${value + i * 10}",
-                color = Color.LightGray,
-                fontSize = 10.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float, drift: Float, verticalSpeed: Float) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = size.minDimension / 2f - 12f
 
+        val labelPaint = android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.LEFT
+            isFakeBoldText = true
+            textSize = 34f
+            typeface = Typeface.MONOSPACE
+            letterSpacing = 0f
+        }
+
         // ARTIFICIAL HORIZON BACKGROUND
         rotate(-bank, pivot = center) {
             val pitchOffset = pitch * 3  // scale pitch visually
-
-//            val pitchStep = 10
-//            val ladderSpacing = 12f  // pixels per degree of pitch
-//
-//            val ladderPaint = android.graphics.Paint().apply {
-//                color = android.graphics.Color.WHITE
-//                textAlign = android.graphics.Paint.Align.CENTER
-//                textSize = 24f
-//                isFakeBoldText = true
-//            }
-
-//            for (i in -3..3) {
-//                val pitchAngle = i * pitchStep
-//                if (pitchAngle == 0) continue // skip the center horizon line
-//
-//                val yOffset = center.y + pitchOffset - pitchAngle * ladderSpacing
-//                val lineLength = if (pitchAngle % 20 == 0) 80f else 40f
-//
-//                val isDashed = pitchAngle % 20 != 0
-//
-//                if (isDashed) {
-//                    // Draw dashed line
-//                    val path = Path().apply {
-//                        moveTo(center.x - lineLength / 2, yOffset)
-//                        lineTo(center.x + lineLength / 2, yOffset)
-//                    }
-//                    drawPath(
-//                        path = path,
-//                        color = Color.White,
-//                        style = Stroke(
-//                            width = 2f,
-//                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-//                        )
-//                    )
-//                } else {
-//                    // Solid line
-//                    drawLine(
-//                        color = Color.White,
-//                        start = Offset(center.x - lineLength / 2, yOffset),
-//                        end = Offset(center.x + lineLength / 2, yOffset),
-//                        strokeWidth = 2f
-//                    )
-//                }
-//
-//                // Labels
-//                drawContext.canvas.nativeCanvas.apply {
-//                    val label = "${if (pitchAngle > 0) "+" else ""}$pitchAngle"
-//                    drawText(label, center.x - lineLength / 2 - 20f, yOffset + 8f, ladderPaint)
-//                    drawText(label, center.x + lineLength / 2 + 20f, yOffset + 8f, ladderPaint)
-//                }
-//            }
-
             drawRect(
                 color = Color(0xFF4FC3F7), // Sky blue
                 topLeft = Offset(0f, center.y - radius + pitchOffset),
@@ -215,13 +140,18 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
         }
 
         // COMPASS ROSE
-        rotate(-heading, pivot = center) {
+        rotate(-magneticHeading, pivot = center) {
             drawCircle(color = Color.DarkGray, center = center, radius = radius)
-            val directions = listOf("N" to 0f, "E" to 90f, "S" to 180f, "W" to 270f)
+            val directions = listOf(
+                "N" to 0f,
+                "E" to 90f,
+                "S" to 180f,
+                "W" to 270f,
+            )
             val textPaint = android.graphics.Paint().apply {
                 color = android.graphics.Color.WHITE
                 textAlign = android.graphics.Paint.Align.CENTER
-                textSize = 28f
+                textSize = 32f
                 isFakeBoldText = true
             }
 
@@ -236,8 +166,8 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
             }
         }
 
-     //    TRACK ARROW
-        rotate(track - heading, pivot = center) {
+        // TRACK ARROW
+        rotate(track - magneticHeading, pivot = center) {
             drawLine(
                 color = Color.Green,
                 start = center,
@@ -246,7 +176,7 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
             )
         }
 
-        // HDG ARROW
+        // HDG ARROW (centered)
         drawLine(
             color = Color.Cyan,
             start = Offset(center.x, center.y),
@@ -269,44 +199,66 @@ fun HeadingTrackCompass(track: Float, heading: Float, pitch: Float, bank: Float,
             strokeWidth = 4f
         )
 
-        // PITCH + BANK LABELS
-        val labelPaint = android.graphics.Paint().apply {
-            textAlign = android.graphics.Paint.Align.CENTER
-            isFakeBoldText = true
-            textSize = 32f
-        }
-
-        // DRIFT
         drawContext.canvas.nativeCanvas.apply {
+            val labelSpacing = 36f
+            val verticalStart = center.y + radius + 60f
+            val rightX = center.x + radius - 60f
+
+
+            // DRIFT (Left Top)
             labelPaint.color = android.graphics.Color.MAGENTA
+            val driftLabel = if (drift >= 0f)
+                String.format(Locale.US,"DRIFT %03.0f° R", drift)
+            else
+                String.format(Locale.US,"DRIFT %03.0f° L", -drift)
             drawText(
-                "DRIFT ${if (drift >= 0) "+%.0f° R" else "%.0f° L".format(-drift)}".format(drift),
-                center.x,
-                center.y + radius + 80f,
+                driftLabel,
+                8f,
+                center.y + radius + 60f,
                 labelPaint
             )
 
-            // VSI
+            // VSI (Left Bottom)
             val vsi = formatVerticalSpeed(verticalSpeed)
             val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "ft/min" else "m/min"
+            val paddedVsi = String.format(Locale.US,"%04d", abs(vsi))
+            val signedVsi = if (vsi >= 0) "+$paddedVsi" else "-$paddedVsi"
+            val formattedVsi = "VSI   $signedVsi $vsiLabel"
             labelPaint.color = android.graphics.Color.YELLOW
             drawText(
-                "VSI ${if (vsi >= 0) "+" else ""}${vsi} $vsiLabel",
-                center.x,
-                center.y + radius + 120f,
+                formattedVsi,
+                8f,
+                center.y + radius + 96f,
+                labelPaint
+            )
+
+            // BANK ANGLE (Right Top — replaces TH)
+            labelPaint.color = android.graphics.Color.CYAN
+            drawText(
+                String.format(Locale.US, "BA %03.0f°", bank),
+                rightX,
+                verticalStart,
+                labelPaint
+            )
+
+            // MAGNETIC HEADING
+            labelPaint.color = android.graphics.Color.GREEN
+            drawText(
+                "MH %.0f°".format(magneticHeading),
+                rightX,
+                verticalStart + labelSpacing,
                 labelPaint
             )
 
             // BANK ANGLE
-            labelPaint.color = android.graphics.Color.LTGRAY
-            val bankText = "${bank.toInt()}°"
-            val textYOffset = center.y - radius - 80f
-            val textXOffset = 80f
-            when {
-                bank > 5f -> drawText(bankText, center.x + textXOffset, textYOffset, labelPaint)
-                bank < -5f -> drawText(bankText, center.x - textXOffset, textYOffset, labelPaint)
-            }
-
+//            labelPaint.color = android.graphics.Color.LTGRAY
+//            val bankText = "${bank.toInt()}°"
+//            val textYOffset = center.y - radius - 80f
+//            val textXOffset = 80f
+//            when {
+//                bank > 5f -> drawText(bankText, center.x + textXOffset, textYOffset, labelPaint)
+//                bank < -5f -> drawText(bankText, center.x - textXOffset, textYOffset, labelPaint)
+//            }
         }
     }
 }
@@ -390,4 +342,53 @@ fun formatAltitude(meters: Float): Int {
     }
 }
 
+
+@Composable
+fun SpeedAltitudeTape(
+    value: Int,
+    label: String,
+    tapeRange: Int,
+    highlightColor: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(80.dp)
+    ) {
+        for (i in tapeRange downTo 1) {
+            val v = value - i * 10
+            val text = if (v >= 0) "%04d".format(v) else "    "
+            Text(
+                text = text,
+                color = Color.LightGray,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .background(highlightColor)
+                .padding(4.dp)
+        ) {
+            Text(
+                text = "%04d %s".format(value, label),
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+
+        for (i in 1..tapeRange) {
+            val v = value + i * 10
+            val text = if (v >= 0) "%04d".format(v) else "    "
+            Text(
+                text = text,
+                color = Color.LightGray,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
 

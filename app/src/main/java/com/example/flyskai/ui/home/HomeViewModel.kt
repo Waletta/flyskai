@@ -16,10 +16,6 @@ class HomeViewModel : ViewModel() {
     private var lastTime = System.currentTimeMillis()
 
 
-    private var lastHeading = 0f
-    private var lastHeadingCheckTime = System.currentTimeMillis()
-    private var lastPhase = FlightPhase.IDLE
-
     // VSI moving AVG
     private val vsiBuffer = mutableListOf<Float>()
     private val maxBufferSize = 5
@@ -42,11 +38,9 @@ class HomeViewModel : ViewModel() {
         _bank.value = bank
     }
 
-
-    fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float) {
-        val speedKmh = speed
+    fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float, trueHeading: Float, magneticHeading: Float) {
         val currentTime = System.currentTimeMillis()
-        val deltaTimeSec = (currentTime - lastTime) / 1000.0 // seconds
+        val deltaTimeSec = (currentTime - lastTime) / 1000.0
         val deltaAlt = altitude - lastAltitude
         val rawVerticalSpeed = if (deltaTimeSec > 0) (deltaAlt / deltaTimeSec).toFloat() else 0f
 
@@ -57,25 +51,15 @@ class HomeViewModel : ViewModel() {
         }
         val smoothedVerticalSpeed = vsiBuffer.average().toFloat()
 
-        //val pitch = _pitch.value ?: 0f
-
-        //val heading = _heading.value ?: 0f
-//        val isPushback = detectPushback(speedKmh / 3.6f, heading)
-//        val currentPhase = when {
-//            isPushback -> TakeoffPhase.PUSHBACK
-//            speedKmh in 8f..40f -> TakeoffPhase.TAXI
-//            speedKmh > 40f && abs(pitch) < 5f -> TakeoffPhase.TAKEOFF_ROLL
-//            else -> TakeoffPhase.IDLE
-//        }
-//        lastPhase = currentPhase
-
         _locationState.value = LocationState(
             coordinates = Coordinates(lat, lon),
-            speed = speedKmh,
+            speed = speed,
             altitude = altitude,
             bearing = bearing,
             verticalSpeed=smoothedVerticalSpeed,
-            flightPhase = FlightPhase.IDLE
+            flightPhase = FlightPhase.IDLE,
+            trueHeading = trueHeading,
+            magneticHeading = magneticHeading
         )
         lastAltitude = altitude
         lastTime = currentTime
