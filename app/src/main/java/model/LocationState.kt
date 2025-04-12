@@ -29,7 +29,9 @@ data class LocationState(
     val verticalSpeed: Float = 0f,
     val flightPhase: FlightPhase = FlightPhase.IDLE,
     val trueHeading: Float = 0f,     // from sensor (rotation vector)
-    val magneticHeading: Float = 0f  // adjusted with geomagnetic declination
+    val magneticHeading: Float = 0f,  // adjusted with geomagnetic declination
+    val courseToDest: Float = 0f
+
 )
 
 data class Coordinates(

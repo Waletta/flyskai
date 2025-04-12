@@ -22,6 +22,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import com.example.flyskai.databinding.ActivityMainBinding
+import com.example.flyskai.ui.shared.SharedFlightViewModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -30,14 +31,18 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import model.Coordinates
-import model.LocationState
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+
+import com.example.flyskai.ui.shared.knownAirports
 
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var appBarConfiguration: AppBarConfiguration
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
@@ -49,9 +54,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rotationSensor: Sensor
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
+    private val sharedFlightViewModel: SharedFlightViewModel by viewModels()
+    private var selectedDestinationLatLon: Pair<Double, Double>? = null
+    private var selectedIcao: String? = null
+
 
     private var skipFirstFix = false
     private var lastRotationVector: FloatArray = FloatArray(3)
+    private val _northUpMode = MutableStateFlow(true)
+    val northUpMode: StateFlow<Boolean> = _northUpMode
+
+    fun toggleNorthUp() {
+        _northUpMode.value = !_northUpMode.value
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +76,17 @@ class MainActivity : AppCompatActivity() {
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        sharedFlightViewModel.destination.observe(this) { icao ->
+            if (!icao.isNullOrBlank()) {
+                val airport = knownAirports.find { it.icao == icao }
+                if (airport != null) {
+                    selectedDestinationLatLon = Pair(airport.lat, airport.lon)
+                    selectedIcao = icao
+                }
+            }
+        }
+
 
         locationRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
@@ -93,6 +120,7 @@ class MainActivity : AppCompatActivity() {
                             trueHeading = (trueHeading + 360) % 360 // normalize
                         }
 
+
                         // 2. Compute geomagnetic field and magnetic heading
                         val geoField = GeomagneticField(
                             lat.toFloat(),
@@ -102,8 +130,20 @@ class MainActivity : AppCompatActivity() {
                         )
                         val magneticHeading = (trueHeading - geoField.declination + 360) % 360
 
+
+                        // 3. Compute courseToDest if destination is set
+                        val courseToDest = selectedDestinationLatLon?.let { (destLat, destLon) ->
+                            computeCourseToDestination(
+                                currentLat = lat,
+                                currentLon = lon,
+                                destLat = destLat,
+                                destLon = destLon
+                            )
+                        } ?: 0f // fallback to 0 if no destination selected
+
+
                         withContext(Dispatchers.Main) {
-                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading)
+                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
                         }
                     }
                 }
@@ -151,13 +191,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupToolbarObservers() {
         homeViewModel.locationState.observe(this) { state ->
             val track = state.bearing
-            val heading = homeViewModel.heading.value ?: 0f
+            //val heading = homeViewModel.heading.value ?: 0f
              binding.appBarMain.composeCockpitView.setContent {
                 CockPit(track = track, trueHeading = state.trueHeading, magneticHeading = state.magneticHeading,
                     speed = state.speed,
                     altitude = state.altitude.toFloat(),
                     verticalSpeed = state.verticalSpeed,
-                    flightPhase = state.flightPhase)
+                    flightPhase = state.flightPhase,
+                    northUpMode= false, course = state.courseToDest)
             }
         }
     }
@@ -210,6 +251,26 @@ class MainActivity : AppCompatActivity() {
             Log.e("FlyskAI", "SecurityException: ${e.message}")
         }
     }
+
+    private fun computeCourseToDestination(
+        currentLat: Double,
+        currentLon: Double,
+        destLat: Double,
+        destLon: Double
+    ): Float {
+        val lat1Rad = Math.toRadians(currentLat)
+        val lat2Rad = Math.toRadians(destLat)
+        val deltaLonRad = Math.toRadians(destLon - currentLon)
+
+        val y = sin(deltaLonRad) * cos(lat2Rad)
+        val x = cos(lat1Rad) * sin(lat2Rad) -
+                sin(lat1Rad) * cos(lat2Rad) * cos(deltaLonRad)
+        val initialBearingRad = atan2(y, x)
+
+        val bearingDeg = (Math.toDegrees(initialBearingRad) + 360) % 360
+        return bearingDeg.toFloat()
+    }
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>, grantResults: IntArray

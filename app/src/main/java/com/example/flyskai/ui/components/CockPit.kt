@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontFamily
 import com.example.flyskai.AltitudeUnit
 import model.FlightPhase
 import kotlin.math.abs
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun CockPit(
@@ -48,7 +49,10 @@ fun CockPit(
     flightPhase: FlightPhase,
     pitch: Float = 0f,
     bank: Float = 0f,
+    northUpMode: Boolean,
+    course: Float = 0f,
 ) {
+
     val drift = ((track - magneticHeading + 360) % 360).let {
         if (it > 180) it - 360 else it
     }
@@ -81,7 +85,7 @@ fun CockPit(
                 .fillMaxWidth(0.6f)
                 .aspectRatio(1f)
                 .padding(bottom = 16.dp)) {
-                HeadingTrackCompass(track, trueHeading, magneticHeading, pitch, bank, drift, verticalSpeed)
+                HeadingTrackCompass(track, trueHeading, magneticHeading, pitch, bank, drift, verticalSpeed, false, course)
             }
 
             // Altitude Tape
@@ -104,7 +108,9 @@ fun HeadingTrackCompass(
     pitch: Float,
     bank: Float,
     drift: Float,
-    verticalSpeed: Float
+    verticalSpeed: Float,
+    northUp: Boolean,
+    course: Float
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2f, size.height / 2f)
@@ -176,6 +182,16 @@ fun HeadingTrackCompass(
             )
         }
 
+        // COURSE TO DESTINATION ARROW
+        rotate(course - magneticHeading, pivot = center) {
+            drawLine(
+                color = Color(0xFFFFA500), // Orange
+                start = center,
+                end = Offset(center.x, center.y - radius),
+                strokeWidth = 6f
+            )
+        }
+
         // HDG ARROW (centered)
         drawLine(
             color = Color.Cyan,
@@ -232,8 +248,9 @@ fun HeadingTrackCompass(
                 labelPaint
             )
 
+
             // BANK ANGLE (Right Top — replaces TH)
-            labelPaint.color = android.graphics.Color.CYAN
+            labelPaint.color = android.graphics.Color.WHITE
             drawText(
                 String.format(Locale.US, "BA %03.0f°", bank),
                 rightX,
@@ -247,6 +264,14 @@ fun HeadingTrackCompass(
                 "MH %.0f°".format(magneticHeading),
                 rightX,
                 verticalStart + labelSpacing,
+                labelPaint
+            )
+
+            labelPaint.color = "#FFA500".toColorInt()
+            drawText(
+                "CRS %.0f°".format(course),
+                rightX,
+                verticalStart + labelSpacing * 2,
                 labelPaint
             )
 

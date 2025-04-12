@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import model.Coordinates
 import model.LocationState
 import model.FlightPhase
-//import kotlin.math.abs
 
 class HomeViewModel : ViewModel() {
 
@@ -14,7 +13,6 @@ class HomeViewModel : ViewModel() {
     val locationState: LiveData<LocationState> = _locationState
     private var lastAltitude = 0.0
     private var lastTime = System.currentTimeMillis()
-
 
     // VSI moving AVG
     private val vsiBuffer = mutableListOf<Float>()
@@ -38,7 +36,7 @@ class HomeViewModel : ViewModel() {
         _bank.value = bank
     }
 
-    fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float, trueHeading: Float, magneticHeading: Float) {
+    fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float, trueHeading: Float, magneticHeading: Float, courseToDest: Float) {
         val currentTime = System.currentTimeMillis()
         val deltaTimeSec = (currentTime - lastTime) / 1000.0
         val deltaAlt = altitude - lastAltitude
@@ -59,7 +57,8 @@ class HomeViewModel : ViewModel() {
             verticalSpeed=smoothedVerticalSpeed,
             flightPhase = FlightPhase.IDLE,
             trueHeading = trueHeading,
-            magneticHeading = magneticHeading
+            magneticHeading = magneticHeading,
+            courseToDest = courseToDest
         )
         lastAltitude = altitude
         lastTime = currentTime
