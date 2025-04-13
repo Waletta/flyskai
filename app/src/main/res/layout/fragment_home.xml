@@ -23,7 +23,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="?android:attr/windowBackground"
+        android:background="@color/black"
         app:menu="@menu/bottom_nav_menu"
         app:labelVisibilityMode="unlabeled"
         app:itemIconTint="@color/white"

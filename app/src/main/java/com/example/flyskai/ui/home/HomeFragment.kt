@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -61,6 +62,10 @@ class HomeFragment : Fragment() {
 
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
+                R.id.navigation_ai -> {
+                    showAIDownloadDialog()
+                    true
+                }
                 R.id.navigation_onboard -> {
                     val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
 
@@ -104,6 +109,40 @@ class HomeFragment : Fragment() {
 
         return binding.root
     }
+
+    private fun showAIDownloadDialog() {
+        val builder = android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Enable AI Assistant?")
+            .setMessage("This feature requires downloading a ~2.7GB model file. Proceed?")
+            .setPositiveButton("Download", null)
+            .setNegativeButton("Cancel", null)
+
+        val dialog = builder.create()
+
+        dialog.setOnShowListener {
+            val positiveButton = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+            val negativeButton = dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)
+
+            val bColor = android.graphics.Color.WHITE
+
+            positiveButton.setTextColor(bColor)
+            negativeButton.setTextColor(bColor)
+
+            positiveButton.setOnClickListener {
+                Toast.makeText(requireContext(), "Downloading AI model…", Toast.LENGTH_SHORT).show()
+                //downloadAIModel()
+                dialog.dismiss()
+            }
+
+            negativeButton.setOnClickListener {
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
+    }
+
+
 
     private fun unseat() {
         val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)

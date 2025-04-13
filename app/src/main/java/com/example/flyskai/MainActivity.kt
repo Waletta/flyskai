@@ -198,7 +198,9 @@ class MainActivity : AppCompatActivity() {
                     altitude = state.altitude.toFloat(),
                     verticalSpeed = state.verticalSpeed,
                     flightPhase = state.flightPhase,
-                    northUpMode= false, course = state.courseToDest)
+                    northUpMode= false, course = state.courseToDest,
+                    destination = sharedFlightViewModel.destination.value ?: "",
+                    currentLat = state.coordinates.latitude, currentLon = state.coordinates.longitude)
             }
         }
     }

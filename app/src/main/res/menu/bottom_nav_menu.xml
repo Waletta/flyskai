@@ -20,4 +20,11 @@
         android:id="@+id/navigation_unit"
         android:icon="@drawable/baseline_conveyor_belt_24"
         android:title=""/>
+
+    <item
+        android:id="@+id/navigation_ai"
+        android:icon="@drawable/baseline_memory_24"
+        android:title=""
+        android:tooltipText="Enable AI Assistant"/>
+
 </menu>
