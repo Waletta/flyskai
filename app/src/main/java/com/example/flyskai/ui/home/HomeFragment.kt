@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -14,8 +13,8 @@ import com.example.flyskai.AppSettings
 import com.example.flyskai.R
 import com.example.flyskai.databinding.FragmentHomeBinding
 import com.example.flyskai.ui.shared.SharedFlightViewModel
+import com.example.flyskai.ui.shared.SharedLlmModel
 import com.mapbox.geojson.Point
-
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
@@ -24,11 +23,11 @@ import com.mapbox.maps.plugin.annotation.AnnotationConfig
 import com.mapbox.maps.plugin.annotation.annotations
 import com.mapbox.maps.plugin.annotation.generated.*
 import com.mapbox.maps.plugin.locationcomponent.location
-
 import com.example.flyskai.ui.shared.knownAirports
 
-
 class HomeFragment : Fragment() {
+
+    //private val sharedViewModel: SharedLlmModel by activityViewModels()
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
@@ -41,7 +40,6 @@ class HomeFragment : Fragment() {
     private val airportNames = knownAirports.map { it.name }.toTypedArray()
     private val sharedFlightViewModel: SharedFlightViewModel by activityViewModels()
     private var isSeated = false
-
 
 
     override fun onCreateView(

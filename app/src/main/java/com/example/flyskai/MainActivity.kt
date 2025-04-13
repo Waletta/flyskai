@@ -23,6 +23,7 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import com.example.flyskai.databinding.ActivityMainBinding
 import com.example.flyskai.ui.shared.SharedFlightViewModel
+import com.example.flyskai.ui.shared.SharedLlmModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -41,7 +42,6 @@ import kotlin.math.sin
 
 import com.example.flyskai.ui.shared.knownAirports
 
-
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private val homeViewModel: HomeViewModel by viewModels()
@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
     private val sharedFlightViewModel: SharedFlightViewModel by viewModels()
     private var selectedDestinationLatLon: Pair<Double, Double>? = null
     private var selectedIcao: String? = null
-
+    private val sharedLlmModel: SharedLlmModel by viewModels()
 
     private var skipFirstFix = false
     private var lastRotationVector: FloatArray = FloatArray(3)
@@ -76,7 +76,6 @@ class MainActivity : AppCompatActivity() {
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
         sharedFlightViewModel.destination.observe(this) { icao ->
             if (!icao.isNullOrBlank()) {
                 val airport = knownAirports.find { it.icao == icao }
@@ -152,6 +151,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        //sharedLlmModel.phiModel = PhiModel.getInstance(application)
         setupToolbarObservers()
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
