@@ -15,6 +15,7 @@ import android.util.Log
 import android.view.Menu
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -32,15 +33,14 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import model.PhiModel
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-import com.example.flyskai.ui.shared.knownAirports
+import model.knownAirports
 
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -57,20 +57,25 @@ class MainActivity : AppCompatActivity() {
     private val sharedFlightViewModel: SharedFlightViewModel by viewModels()
     private var selectedDestinationLatLon: Pair<Double, Double>? = null
     private var selectedIcao: String? = null
-    private val sharedLlmModel: SharedLlmModel by viewModels()
+    //private val sharedLlmModel: SharedLlmModel by viewModels()
+
 
     private var skipFirstFix = false
     private var lastRotationVector: FloatArray = FloatArray(3)
-    private val _northUpMode = MutableStateFlow(true)
-    val northUpMode: StateFlow<Boolean> = _northUpMode
+//    private val _northUpMode = MutableStateFlow(true)
+//    val northUpMode: StateFlow<Boolean> = _northUpMode
 
-    fun toggleNorthUp() {
-        _northUpMode.value = !_northUpMode.value
-    }
+//    fun toggleNorthUp() {
+//        _northUpMode.value = !_northUpMode.value
+//    }
+
+    private lateinit var tokenizer: Any
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        //sharedLlmModel.phiModel = PhiModel.getInstance(application)
+
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
@@ -151,7 +156,6 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        //sharedLlmModel.phiModel = PhiModel.getInstance(application)
         setupToolbarObservers()
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
@@ -180,6 +184,14 @@ class MainActivity : AppCompatActivity() {
         if (checkPermission()) {
             startLocationUpdates()
         }
+    }
+
+    private fun showErrorDialog(title: String, message: String) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("Exit") { _, _ -> finish() }
+            .show()
     }
 
     override fun onPause() {

@@ -1,10 +1,18 @@
-    plugins {
+plugins {
         alias(libs.plugins.android.application)
         alias(libs.plugins.kotlin.android)
         alias(libs.plugins.compose.compiler)
     }
 
     android {
+
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+                version = "3.22.1"
+            }
+        }
+
         namespace = "com.example.flyskai"
         compileSdk = 35
 
@@ -15,8 +23,16 @@
             versionCode = 1
             versionName = "1.5"
 
+            externalNativeBuild {
+                cmake {
+                    // Specify ABI filters if needed.
+                    abiFilters("arm64-v8a", "armeabi-v7a")
+                }
+            }
+
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
+
 
         buildTypes {
             release {
@@ -40,6 +56,7 @@
         }
 
     }
+
 
     dependencies {
         implementation(libs.sentencepiece)

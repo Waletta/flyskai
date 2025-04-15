@@ -1,4 +1,4 @@
-package com.example.flyskai.ui.shared
+package model
 
 data class Airport(val icao: String, val name: String, val lat: Double, val lon: Double)
 

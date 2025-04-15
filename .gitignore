@@ -13,4 +13,3 @@
 .externalNativeBuild
 .cxx
 local.properties
-/app/src/main/java/model/tinyllama-1.1b-1t-openorca.Q4_K_M.gguf

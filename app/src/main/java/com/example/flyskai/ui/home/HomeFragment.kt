@@ -23,7 +23,7 @@ import com.mapbox.maps.plugin.annotation.AnnotationConfig
 import com.mapbox.maps.plugin.annotation.annotations
 import com.mapbox.maps.plugin.annotation.generated.*
 import com.mapbox.maps.plugin.locationcomponent.location
-import com.example.flyskai.ui.shared.knownAirports
+import model.knownAirports
 
 class HomeFragment : Fragment() {
 

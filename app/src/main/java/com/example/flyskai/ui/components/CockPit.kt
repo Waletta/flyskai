@@ -32,14 +32,13 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
 import com.example.flyskai.AltitudeUnit
 import model.FlightPhase
 import kotlin.math.abs
 import androidx.core.graphics.toColorInt
-import com.example.flyskai.ui.shared.knownAirports
+import model.knownAirports
 import java.lang.Math.toRadians
 import kotlin.math.atan2
 import kotlin.math.pow
@@ -141,7 +140,7 @@ fun HeadingTrackCompass(
         // ARTIFICIAL HORIZON BACKGROUND
         // In north-up mode, we rotate the horizon instead of the compass
         val rotationAngle = if (northUp) -bank else -bank
-        rotate(rotationAngle, pivot = center) {
+        rotate(-bank, pivot = center) {
             val pitchOffset = pitch * 3  // scale pitch visually
             drawRect(
                 color = Color(0xFF4FC3F7), // Sky blue
@@ -294,11 +293,10 @@ fun HeadingTrackCompass(
             }
         }
 
+
         drawContext.canvas.nativeCanvas.apply {
-            val labelSpacing = 36f
             val verticalStart = center.y + radius + 60f
             val rightX = center.x + radius - 60f
-
 
             // DRIFT (Left Top)
             labelPaint.color = android.graphics.Color.RED
