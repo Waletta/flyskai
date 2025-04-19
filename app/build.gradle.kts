@@ -52,6 +52,8 @@ plugins {
 
     dependencies {
         implementation(libs.sentencepiece)
+        implementation(libs.androidx.okhttp3)
+
         implementation(libs.onnxruntime.mobile)
         implementation(platform(libs.androidx.compose.bom))
         implementation(libs.androidx.compose.ui)

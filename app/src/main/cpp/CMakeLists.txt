@@ -2,13 +2,11 @@ cmake_minimum_required(VERSION 3.22.1)
 project(llama_flyskai C CXX)
 include(CheckIncludeFileCXX)
 
-# Set the C++ standard if needed.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
-# Specify the directory where llama.cpp is located.
 set(LLAMA_DIR "/Users/Walitta/AndroidStudioProjects/flyskai/extern/llama.cpp")
 include_directories(
         ${LLAMA_DIR}/include
@@ -31,7 +29,6 @@ set(GGML_SOURCES
         ${LLAMA_DIR}/ggml/src/ggml-threading.h
 )
 
-# Collect llama.cpp source files
 set(LLAMA_SOURCES
         ${LLAMA_DIR}/src/llama-adapter.cpp
         ${LLAMA_DIR}/src/llama-adapter.h
@@ -96,9 +93,12 @@ target_link_libraries(llama_core PRIVATE ggggml)
 add_library(llama SHARED ${JNI_SRC})
 target_link_libraries(llama PRIVATE llama_core ggggml)
 
-# Locate the log library required by Android
 find_library(log-lib log)
+# find_library(android-lib android)
+
 target_link_libraries(llama PRIVATE ${log-lib})
+# target_link_libraries(llama PRIVATE ${android-lib})
+
 
 # Set architecture-specific compiler flags (from docs/android.md)
 if(ANDROID_ABI STREQUAL "arm64-v8a")

@@ -37,6 +37,17 @@ class PhiModel private constructor(private val context: Context) {
             weakInstance = WeakReference(newInstance)
             return newInstance
         }
+
+        fun getModelFile(context: Context): File {
+            return File(context.filesDir, "$LLMS_DIR/$GGUF_FILE").also {
+                it.parentFile?.mkdirs()
+            }
+        }
+
+        fun isModelDownloaded(context: Context): Boolean {
+            val file = getModelFile(context)
+            return file.exists() && file.length() == EXACT_FILE_SIZE
+        }
     }
 
     private fun loadModel() {
