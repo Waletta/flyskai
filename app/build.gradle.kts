@@ -9,7 +9,6 @@ plugins {
         externalNativeBuild {
             cmake {
                 path = file("src/main/cpp/CMakeLists.txt")
-                version = "3.22.1"
             }
         }
 
@@ -22,10 +21,8 @@ plugins {
             targetSdk = 35
             versionCode = 1
             versionName = "1.5"
-
-
-
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         }
 
 
