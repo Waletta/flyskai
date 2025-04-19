@@ -97,10 +97,9 @@ class PhiModel private constructor(private val context: Context) {
         }
     }
 
-    private fun getModelFile(): File {
-        val dir = File(context.filesDir, LLMS_DIR).apply {
-            if (!exists()) mkdirs()
-        }
+    fun getModelFile(): File {
+        val dir = File(context.filesDir, LLMS_DIR)
         return File(dir, GGUF_FILE)
     }
+
 }

@@ -23,12 +23,7 @@ plugins {
             versionCode = 1
             versionName = "1.5"
 
-            externalNativeBuild {
-                cmake {
-                    // Specify ABI filters if needed.
-                    abiFilters("arm64-v8a", "armeabi-v7a")
-                }
-            }
+
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }

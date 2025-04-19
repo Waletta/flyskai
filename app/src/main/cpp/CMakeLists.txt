@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22.1)
 project(llama_flyskai)
 
 # Set the C++ standard if needed.
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # Specify the directory where llama.cpp is located.
 set(LLAMA_DIR "/Users/Walitta/AndroidStudioProjects/flyskai/extern/llama.cpp")
