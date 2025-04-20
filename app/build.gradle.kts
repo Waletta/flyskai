@@ -22,7 +22,9 @@ plugins {
             versionCode = 1
             versionName = "1.5"
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
+            ndk {
+                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            }
         }
 
 

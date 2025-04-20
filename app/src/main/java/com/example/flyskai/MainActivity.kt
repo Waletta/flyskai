@@ -2,6 +2,7 @@ package com.example.flyskai
 
 import android.Manifest
 import com.example.flyskai.ui.components.CockPit
+
 import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
 import android.hardware.GeomagneticField
@@ -17,6 +18,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.Composable
 import androidx.core.app.ActivityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.navigation.findNavController
@@ -24,7 +26,6 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import com.example.flyskai.databinding.ActivityMainBinding
 import com.example.flyskai.ui.shared.SharedFlightViewModel
-import com.example.flyskai.ui.shared.SharedLlmModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -35,16 +36,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import model.PhiModel
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
+
+
 
 import model.knownAirports
 
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
-    private val homeViewModel: HomeViewModel by viewModels()
+//    private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val locationPermissionRequest = 100
@@ -92,10 +94,10 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        locationRequest = LocationRequest.Builder(1000L)
-            .setMinUpdateIntervalMillis(2000L)
+        locationRequest = LocationRequest.Builder(2000L)
+            .setMinUpdateIntervalMillis(4000L)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-            .setMaxUpdateDelayMillis(4000L)
+            .setMaxUpdateDelayMillis(8000L)
             .build()
 
         locationCallback = object : LocationCallback() {
@@ -146,9 +148,9 @@ class MainActivity : AppCompatActivity() {
                         } ?: 0f // fallback to 0 if no destination selected
 
 
-                        withContext(Dispatchers.Main) {
-                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
-                        }
+//                        withContext(Dispatchers.Main) {
+//                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
+//                        }
                     }
                 }
             }
@@ -156,7 +158,11 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        setupToolbarObservers()
+        //setupToolbarObservers()
+
+//        binding.appBarMain.composeCockpitView.setContent {
+//            ChatScreen(viewModel = chatViewModel)
+//        }
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
         appBarConfiguration = AppBarConfiguration(
@@ -179,7 +185,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
+//        sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
         skipFirstFix = true
         if (checkPermission()) {
             startLocationUpdates()
@@ -197,25 +203,29 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         fusedLocationClient.removeLocationUpdates(locationCallback)
-        sensorManager.unregisterListener(sensorListener)
+//        sensorManager.unregisterListener(sensorListener)
     }
 
-    private fun setupToolbarObservers() {
-        homeViewModel.locationState.observe(this) { state ->
-            val track = state.bearing
-            //val heading = homeViewModel.heading.value ?: 0f
-             binding.appBarMain.composeCockpitView.setContent {
-                CockPit(track = track, trueHeading = state.trueHeading, magneticHeading = state.magneticHeading,
-                    speed = state.speed,
-                    altitude = state.altitude.toFloat(),
-                    verticalSpeed = state.verticalSpeed,
-                    flightPhase = state.flightPhase,
-                    northUpMode= false, course = state.courseToDest,
-                    destination = sharedFlightViewModel.destination.value ?: "",
-                    currentLat = state.coordinates.latitude, currentLon = state.coordinates.longitude)
-            }
-        }
-    }
+//    @Composable
+//    private fun SetupToolbarObservers() {
+//        ChatScreen()
+//        homeViewModel.locationState.observe(this) { state ->
+//            val track = state.bearing
+//            //val heading = homeViewModel.heading.value ?: 0f
+//             binding.appBarMain.composeCockpitView.setContent {
+//                CockPit(track = track, trueHeading = state.trueHeading, magneticHeading = state.magneticHeading,
+//                    speed = state.speed,
+//                    altitude = state.altitude.toFloat(),
+//                    verticalSpeed = state.verticalSpeed,
+//                    flightPhase = state.flightPhase,
+//                    northUpMode= false, course = state.courseToDest,
+//                    destination = sharedFlightViewModel.destination.value ?: "",
+//                    currentLat = state.coordinates.latitude, currentLon = state.coordinates.longitude)
+////                 PhiChatScreen()
+//
+//             }
+//        }
+//    }
     private fun checkPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION
@@ -234,21 +244,21 @@ class MainActivity : AppCompatActivity() {
             locationPermissionRequest
         )
     }
-
-    private val sensorListener = object : SensorEventListener {
-        override fun onSensorChanged(event: SensorEvent?) {
-            if (event?.sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
-                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-                SensorManager.getOrientation(rotationMatrix, orientationAngles)
-                val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
-                val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
-                homeViewModel.updateDeviceHeading(pitch, bank, (azimuth + 360) % 360)
-            }
-        }
-
-        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-    }
+//
+//    private val sensorListener = object : SensorEventListener {
+//        override fun onSensorChanged(event: SensorEvent?) {
+//            if (event?.sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
+//                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+//                SensorManager.getOrientation(rotationMatrix, orientationAngles)
+//                val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
+//                val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
+//                val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
+//                homeViewModel.updateDeviceHeading(pitch, bank, (azimuth + 360) % 360)
+//            }
+//        }
+//
+//        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+//    }
 
     private fun startLocationUpdates() {
         try {
