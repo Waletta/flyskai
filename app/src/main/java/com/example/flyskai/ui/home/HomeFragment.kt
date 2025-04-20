@@ -13,7 +13,6 @@ import com.example.flyskai.AppSettings
 import com.example.flyskai.R
 import com.example.flyskai.databinding.FragmentHomeBinding
 import com.example.flyskai.ui.shared.SharedFlightViewModel
-import com.example.flyskai.ui.shared.SharedLlmModel
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
