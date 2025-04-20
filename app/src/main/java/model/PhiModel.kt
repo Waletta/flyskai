@@ -19,12 +19,10 @@ class PhiModel {
         thread(start = false, name = "Llm-RunLoop") {
             Log.d(tag, "Dedicated thread for native code: ${Thread.currentThread().name}")
 
-            // No-op if called more than once.
             System.loadLibrary("llama_flyskai")
 
-            // Set llama log handler to Android
             log_to_android()
-            backend_init(false)
+            backend_init()
 
             Log.d(tag, system_info())
 
@@ -43,7 +41,7 @@ class PhiModel {
     private external fun free_model(model: Long)
     private external fun new_context(model: Long): Long
     private external fun free_context(context: Long)
-    private external fun backend_init(numa: Boolean)
+    private external fun backend_init()
     private external fun backend_free()
     private external fun new_batch(nTokens: Int, embd: Int, nSeqMax: Int): Long
     private external fun free_batch(batch: Long)

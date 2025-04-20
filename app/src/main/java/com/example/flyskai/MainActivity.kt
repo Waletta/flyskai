@@ -1,9 +1,10 @@
 package com.example.flyskai
+import com.example.flyskai.ui.components.ChatScreen
+import com.example.flyskai.ui.components.CockPit
+import com.example.flyskai.ui.home.HomeViewModel
+
 
 import android.Manifest
-import com.example.flyskai.ui.components.CockPit
-
-import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
 import android.hardware.GeomagneticField
 import android.hardware.Sensor
@@ -35,14 +36,11 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-
-
-
 import model.knownAirports
+import model.ChatViewModel
 
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -59,7 +57,8 @@ class MainActivity : AppCompatActivity() {
     private val sharedFlightViewModel: SharedFlightViewModel by viewModels()
     private var selectedDestinationLatLon: Pair<Double, Double>? = null
     private var selectedIcao: String? = null
-    //private val sharedLlmModel: SharedLlmModel by viewModels()
+    val chatViewModel = ChatViewModel(this)
+    //val chatViewModel = ChatViewModel(applicationContext)
 
 
     private var skipFirstFix = false
@@ -73,11 +72,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tokenizer: Any
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //sharedLlmModel.phiModel = PhiModel.getInstance(application)
-
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
@@ -160,9 +156,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         //setupToolbarObservers()
 
-//        binding.appBarMain.composeCockpitView.setContent {
-//            ChatScreen(viewModel = chatViewModel)
-//        }
+        binding.appBarMain.composeCockpitView.setContent {
+            ChatScreen(chatViewModel)
+        }
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
         appBarConfiguration = AppBarConfiguration(
@@ -206,7 +202,6 @@ class MainActivity : AppCompatActivity() {
 //        sensorManager.unregisterListener(sensorListener)
     }
 
-//    @Composable
 //    private fun SetupToolbarObservers() {
 //        ChatScreen()
 //        homeViewModel.locationState.observe(this) { state ->

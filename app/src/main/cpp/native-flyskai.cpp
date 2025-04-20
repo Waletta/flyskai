@@ -320,7 +320,8 @@ Java_model_PhiModel_free_1sampler(JNIEnv *, jobject, jlong sampler_pointer) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_model_PhiModel_backend_1init(JNIEnv *, jobject) {
+Java_model_PhiModel_backend_1init(JNIEnv *, jobject thiz ) {
+    (void)thiz;
     llama_backend_init();
 }
 
@@ -354,8 +355,7 @@ Java_model_PhiModel_completion_1init(
     auto n_ctx = llama_n_ctx(context);
     auto n_kv_req = tokens_list.size() + n_len;
 
-    LOGI("n_len = %d, n_ctx = %d, n_kv_req = %d", n_len, n_ctx, n_kv_req);
-
+    LOGI("n_len = %d, n_ctx = %d", n_len, n_ctx);
     if (n_kv_req > n_ctx) {
         LOGE("error: n_kv_req > n_ctx, the required KV cache size is not big enough");
     }
