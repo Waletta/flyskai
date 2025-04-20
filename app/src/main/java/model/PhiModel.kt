@@ -1,6 +1,7 @@
 package model
 
 import android.util.Log
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -14,25 +15,7 @@ class PhiModel {
     private val tag: String? = this::class.simpleName
 
     private val threadLocalState: ThreadLocal<State> = ThreadLocal.withInitial { State.Idle }
-
-    private val runLoop: CoroutineDispatcher = Executors.newSingleThreadExecutor {
-        thread(start = false, name = "Llm-RunLoop") {
-            Log.d(tag, "Dedicated thread for native code: ${Thread.currentThread().name}")
-
-            System.loadLibrary("llama_flyskai")
-
-            log_to_android()
-            backend_init()
-
-            Log.d(tag, system_info())
-
-            it.run()
-        }.apply {
-            uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, exception: Throwable ->
-                Log.e(tag, "Unhandled exception", exception)
-            }
-        }
-    }.asCoroutineDispatcher()
+    private val runLoop: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
     private val nlen: Int = 64
 
@@ -92,10 +75,17 @@ class PhiModel {
 
     suspend fun load(pathToModel: String) {
         withContext(runLoop) {
-            when (threadLocalState.get()) {
-                is State.Idle -> {
+            if (threadLocalState.get() is State.Idle) {
+                try {
+                    Log.i(tag, "🧠 Loading Phi model...")
+
+                    System.loadLibrary("llama_flyskai")
+                    log_to_android()
+                    backend_init()
+                    Log.i(tag, "✅ Backend initialized:\n${system_info()}")
+
                     val model = load_model(pathToModel)
-                    if (model == 0L)  throw IllegalStateException("load_model() failed")
+                    if (model == 0L) throw IllegalStateException("load_model() failed")
 
                     val context = new_context(model)
                     if (context == 0L) throw IllegalStateException("new_context() failed")
@@ -106,13 +96,18 @@ class PhiModel {
                     val sampler = new_sampler()
                     if (sampler == 0L) throw IllegalStateException("new_sampler() failed")
 
-                    Log.i(tag, "Loaded model $pathToModel")
                     threadLocalState.set(State.Loaded(model, context, batch, sampler))
+                    Log.i(tag, "✅ Model loaded successfully.")
+                } catch (e: Exception) {
+                    Log.e(tag, "❌ Model load failed", e)
+                    throw e
                 }
-                else -> throw IllegalStateException("Model already loaded")
+            } else {
+                throw IllegalStateException("Model already loaded")
             }
         }
     }
+
 
     fun send(message: String, formatChat: Boolean = false): Flow<String> = flow {
         when (val state = threadLocalState.get()) {
@@ -120,9 +115,7 @@ class PhiModel {
                 val ncur = IntVar(completion_init(state.context, state.batch, message, formatChat, nlen))
                 while (ncur.value <= nlen) {
                     val str = completion_loop(state.context, state.batch, state.sampler, nlen, ncur)
-                    if (str == null) {
-                        break
-                    }
+                    if (str == null) break
                     emit(str)
                 }
                 kv_cache_clear(state.context)
@@ -172,7 +165,6 @@ class PhiModel {
 
         // Enforce only one instance of Llm.
         private val _instance: PhiModel = PhiModel()
-
         fun instance(): PhiModel = _instance
     }
 }

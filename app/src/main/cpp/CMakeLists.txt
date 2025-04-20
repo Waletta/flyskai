@@ -44,14 +44,35 @@ set(GGML_SOURCES
         ${LLAMA_DIR}/ggml/src/ggml-quants.c
         ${LLAMA_DIR}/ggml/src/ggml-quants.h
         ${LLAMA_DIR}/ggml/src/gguf.cpp
+        ${LLAMA_DIR}/ggml/src/ggml-threading.cpp
+        ${LLAMA_DIR}/ggml/src/ggml-threading.h
         ${LLAMA_DIR}/ggml/include/ggml.h
         ${LLAMA_DIR}/ggml/include/ggml-alloc.h
         ${LLAMA_DIR}/ggml/include/ggml-backend.h
         ${LLAMA_DIR}/ggml/include/ggml-cpp.h
         ${LLAMA_DIR}/ggml/include/ggml-cpu.h
-        ${LLAMA_DIR}/ggml/src/ggml-threading.cpp
-        ${LLAMA_DIR}/ggml/src/ggml-threading.h
         ${LLAMA_DIR}/ggml/include/gguf.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu.c
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-aarch64.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-aarch64.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-hbm.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-hbm.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-quants.c
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-quants.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-traits.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-traits.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ggml-cpu-impl.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/common.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/binary-ops.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/binary-ops.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/unary-ops.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/unary-ops.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/simd-mappings.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/vec.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/vec.cpp
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ops.h
+        #${LLAMA_DIR}/ggml/src/ggml-cpu/ops.cpp
 )
 
 set(LLAMA_SOURCES

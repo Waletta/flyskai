@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 import model.ChatViewModel
 
 @Composable
-fun ChatScreen(viewModel: ChatViewModel = ChatViewModel(LocalContext.current.applicationContext)) {
+fun ChatScreen(viewModel: ChatViewModel) {
     val chatMessages = viewModel.chatMessages
     var input by remember { mutableStateOf("") }
 

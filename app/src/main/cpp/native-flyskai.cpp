@@ -70,7 +70,12 @@ static void log_callback(ggml_log_level level, const char * fmt, void * data) {
 
 extern "C" JNIEXPORT jlong JNICALL
 Java_model_PhiModel_load_1model(JNIEnv *env, jobject, jstring filename) {
+    const char *cFilename = env->GetStringUTFChars(filename, nullptr);
+    LOGI("📦 llama_model_load_from_file() loading: %s", cFilename);
+    ggml_backend_load_all();
     llama_model_params model_params = llama_model_default_params();
+    model_params.n_gpu_layers = 0;
+
     auto path_to_model = env->GetStringUTFChars(filename,0);
     LOGI("Loading model from %s", path_to_model);
 
@@ -323,6 +328,7 @@ JNIEXPORT void JNICALL
 Java_model_PhiModel_backend_1init(JNIEnv *, jobject thiz ) {
     (void)thiz;
     llama_backend_init();
+
 }
 
 extern "C"

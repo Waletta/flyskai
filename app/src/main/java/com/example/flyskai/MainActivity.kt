@@ -40,7 +40,9 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import model.knownAirports
-import model.ChatViewModel
+// import model.ChatViewModel
+import model.PhiModel
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -57,8 +59,6 @@ class MainActivity : AppCompatActivity() {
     private val sharedFlightViewModel: SharedFlightViewModel by viewModels()
     private var selectedDestinationLatLon: Pair<Double, Double>? = null
     private var selectedIcao: String? = null
-    val chatViewModel = ChatViewModel(this)
-    //val chatViewModel = ChatViewModel(applicationContext)
 
 
     private var skipFirstFix = false
@@ -74,91 +74,108 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-            ?: throw IllegalStateException("Rotation Vector Sensor not available")
+ //       sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+ //       rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+ //           ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        sharedFlightViewModel.destination.observe(this) { icao ->
-            if (!icao.isNullOrBlank()) {
-                val airport = knownAirports.find { it.icao == icao }
-                if (airport != null) {
-                    selectedDestinationLatLon = Pair(airport.lat, airport.lon)
-                    selectedIcao = icao
-                }
-            }
-        }
+ //       fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+//        sharedFlightViewModel.destination.observe(this) { icao ->
+//            if (!icao.isNullOrBlank()) {
+//                val airport = knownAirports.find { it.icao == icao }
+//                if (airport != null) {
+//                    selectedDestinationLatLon = Pair(airport.lat, airport.lon)
+//                    selectedIcao = icao
+//                }
+//            }
+//        }
 
+//        locationRequest = LocationRequest.Builder(2000L)
+//            .setMinUpdateIntervalMillis(4000L)
+//            .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+//            .setMaxUpdateDelayMillis(8000L)
+//            .build()
 
-        locationRequest = LocationRequest.Builder(2000L)
-            .setMinUpdateIntervalMillis(4000L)
-            .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-            .setMaxUpdateDelayMillis(8000L)
-            .build()
-
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                if (skipFirstFix) {
-                    skipFirstFix = false
-                    return
-                }
-                locationResult.lastLocation?.let { location ->
-                    CoroutineScope(Dispatchers.Default).launch {
-                        val lat = location.latitude
-                        val lon = location.longitude
-                        val speedMs = location.speed
-                        val altitude = location.altitude
-                        val bearing = location.bearing
-
-                        // 1. Compute rotation matrix and true heading
-                        val rotationMatrix = FloatArray(9)
-                        val orientation = FloatArray(3)
-                        var trueHeading = 0f
-
-                        rotationSensor.let { sensor ->
-                            SensorManager.getRotationMatrixFromVector(rotationMatrix, lastRotationVector)
-                            SensorManager.getOrientation(rotationMatrix, orientation)
-                            trueHeading = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                            trueHeading = (trueHeading + 360) % 360 // normalize
-                        }
-
-
-                        // 2. Compute geomagnetic field and magnetic heading
-                        val geoField = GeomagneticField(
-                            lat.toFloat(),
-                            lon.toFloat(),
-                            altitude.toFloat(),
-                            System.currentTimeMillis()
-                        )
-                        val magneticHeading = (trueHeading - geoField.declination + 360) % 360
-
-
-                        // 3. Compute courseToDest if destination is set
-                        val courseToDest = selectedDestinationLatLon?.let { (destLat, destLon) ->
-                            computeCourseToDestination(
-                                currentLat = lat,
-                                currentLon = lon,
-                                destLat = destLat,
-                                destLon = destLon
-                            )
-                        } ?: 0f // fallback to 0 if no destination selected
+//        locationCallback = object : LocationCallback() {
+//            override fun onLocationResult(locationResult: LocationResult) {
+//                if (skipFirstFix) {
+//                    skipFirstFix = false
+//                    return
+//                }
+//                locationResult.lastLocation?.let { location ->
+//                    CoroutineScope(Dispatchers.Default).launch {
+//                        val lat = location.latitude
+//                        val lon = location.longitude
+//                        val speedMs = location.speed
+//                        val altitude = location.altitude
+//                        val bearing = location.bearing
+//
+//                        // 1. Compute rotation matrix and true heading
+//                        val rotationMatrix = FloatArray(9)
+//                        val orientation = FloatArray(3)
+//                        var trueHeading = 0f
+//
+//                        rotationSensor.let { sensor ->
+//                            SensorManager.getRotationMatrixFromVector(rotationMatrix, lastRotationVector)
+//                            SensorManager.getOrientation(rotationMatrix, orientation)
+//                            trueHeading = Math.toDegrees(orientation[0].toDouble()).toFloat()
+//                            trueHeading = (trueHeading + 360) % 360 // normalize
+//                        }
+//
+//
+//                        // 2. Compute geomagnetic field and magnetic heading
+//                        val geoField = GeomagneticField(
+//                            lat.toFloat(),
+//                            lon.toFloat(),
+//                            altitude.toFloat(),
+//                            System.currentTimeMillis()
+//                        )
+//                        val magneticHeading = (trueHeading - geoField.declination + 360) % 360
+//
+//
+//                        // 3. Compute courseToDest if destination is set
+//                        val courseToDest = selectedDestinationLatLon?.let { (destLat, destLon) ->
+//                            computeCourseToDestination(
+//                                currentLat = lat,
+//                                currentLon = lon,
+//                                destLat = destLat,
+//                                destLon = destLon
+//                            )
+//                        } ?: 0f // fallback to 0 if no destination selected
 
 
 //                        withContext(Dispatchers.Main) {
 //                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
 //                        }
-                    }
-                }
+//                    }
+//                }
+//            }
+//        }
+
+
+        // ✅ INIT MODEL EARLY
+        Log.i("MAINEVENT", "LLM model path:")
+
+        val model = PhiModel.instance()
+        val path = File(filesDir, "llms_data/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf").absolutePath
+        Log.i("MAINEVENT", "LLM model path: $path")
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                Log.i("MAINEVENT", "✅ Model loading")
+                model.load(path)
+                Log.i("MAINEVENT", "✅ Model loaded successfully")
+            } catch (e: Exception) {
+                Log.e("MAINEVENT", "❌ Model load failed", e)
             }
         }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         //setupToolbarObservers()
-
-        binding.appBarMain.composeCockpitView.setContent {
-            ChatScreen(chatViewModel)
-        }
+//        val chatViewModel = ChatViewModel(applicationContext)
+//
+//        binding.appBarMain.composeCockpitView.setContent {
+//            ChatScreen(viewModel = chatViewModel)
+//        }
 
         val drawerLayout: DrawerLayout = binding.drawerLayout
         appBarConfiguration = AppBarConfiguration(
@@ -167,11 +184,11 @@ class MainActivity : AppCompatActivity() {
             ), drawerLayout
         )
 
-        if (checkPermission()) {
-            startLocationUpdates()
-        } else {
-            requestPermission()
-        }
+//        if (checkPermission()) {
+//            startLocationUpdates()
+//        } else {
+//            requestPermission()
+//        }
     }
     
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -183,9 +200,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 //        sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
         skipFirstFix = true
-        if (checkPermission()) {
-            startLocationUpdates()
-        }
+//        if (checkPermission()) {
+//            startLocationUpdates()
+//        }
     }
 
     private fun showErrorDialog(title: String, message: String) {
@@ -198,7 +215,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+ //       fusedLocationClient.removeLocationUpdates(locationCallback)
 //        sensorManager.unregisterListener(sensorListener)
     }
 
@@ -255,21 +272,21 @@ class MainActivity : AppCompatActivity() {
 //        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 //    }
 
-    private fun startLocationUpdates() {
-        try {
-            if (checkPermission()) {
-                fusedLocationClient.requestLocationUpdates(
-                    locationRequest,
-                    locationCallback,
-                    Looper.getMainLooper()
-                )
-            } else {
-                requestPermission()
-            }
-        } catch (e: SecurityException) {
-            Log.e("FlyskAI", "SecurityException: ${e.message}")
-        }
-    }
+//    private fun startLocationUpdates() {
+//        try {
+//            if (checkPermission()) {
+//                fusedLocationClient.requestLocationUpdates(
+//                    locationRequest,
+//                    locationCallback,
+//                    Looper.getMainLooper()
+//                )
+//            } else {
+//                requestPermission()
+//            }
+//        } catch (e: SecurityException) {
+//            Log.e("FlyskAI", "SecurityException: ${e.message}")
+//        }
+//    }
 
     private fun computeCourseToDestination(
         currentLat: Double,
@@ -298,7 +315,9 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == locationPermissionRequest && grantResults.isNotEmpty()
             && grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-            startLocationUpdates()
+            Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show()
+
+            //startLocationUpdates()
         } else {
             Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
         }
