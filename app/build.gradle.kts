@@ -25,11 +25,6 @@ plugins {
             disable.add("UnusedResources")
         }
 
-        externalNativeBuild {
-            cmake {
-                path = file("src/main/cpp/CMakeLists.txt")
-            }
-        }
 
         namespace = "com.example.flyskai"
         compileSdk = 35
@@ -41,7 +36,7 @@ plugins {
             versionCode = 1
             versionName = "1.5"
             ndk {
-                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+                abiFilters += listOf("arm64-v8a")
             }
         }
 
@@ -65,9 +60,6 @@ plugins {
             compose = true
             viewBinding = true
         }
-
-
-
     }
 
 
@@ -78,10 +70,8 @@ plugins {
         implementation(platform(libs.androidx.compose.bom))
         implementation(libs.androidx.compose.ui)
         implementation(libs.androidx.compose.material3)
-
         implementation(libs.androidx.compose.ui.tooling.preview)
         implementation(libs.androidx.activity.compose)
-
         implementation(libs.androidx.lifecycle.runtime.ktx)
         implementation(libs.androidx.ui.graphics)
         implementation(libs.androidx.core.ktx)
@@ -92,7 +82,6 @@ plugins {
         implementation(libs.androidx.lifecycle.viewmodel.ktx)
         implementation(libs.androidx.navigation.fragment.ktx)
         implementation(libs.androidx.navigation.ui.ktx)
-
         implementation(libs.play.services.location)
         implementation(libs.mapbox.android)
         implementation(libs.mapbox.extension)
