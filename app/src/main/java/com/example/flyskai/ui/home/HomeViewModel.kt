@@ -10,7 +10,6 @@ import model.FlightPhase
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
-
     private val _locationState = MutableLiveData<LocationState>()
     val locationState: LiveData<LocationState> = _locationState
     private var lastAltitude = 0.0
@@ -38,7 +37,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _bank.value = bank
     }
 
-    fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float, trueHeading: Float, magneticHeading: Float, courseToDest: Float) {
+    fun updateLocationData(lat: Double, lon: Double, speed: Float, altitude: Double, bearing: Float, trueHeading: Float,
+                           magneticHeading: Float, courseToDest: Float) {
         val currentTime = System.currentTimeMillis()
         val deltaTimeSec = (currentTime - lastTime) / 1000.0
         val deltaAlt = altitude - lastAltitude
@@ -60,7 +60,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             flightPhase = FlightPhase.IDLE,
             trueHeading = trueHeading,
             magneticHeading = magneticHeading,
-            courseToDest = courseToDest
+            courseToDest = courseToDest,
         )
         lastAltitude = altitude
         lastTime = currentTime

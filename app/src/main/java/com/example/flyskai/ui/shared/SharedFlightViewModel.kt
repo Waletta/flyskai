@@ -6,9 +6,15 @@ import androidx.lifecycle.ViewModel
 
 class SharedFlightViewModel : ViewModel() {
     private val _destination = MutableLiveData<String?>()
-    val destination: LiveData<String?> = _destination
+    private val _disttodestination = MutableLiveData<Float?>()
 
-    fun setDestination(icao: String) {
+    val destination: LiveData<String?> = _destination
+    val disttodestination: LiveData<Float?> = _disttodestination
+
+    fun setDestination(icao: String, dist: Float) {
         _destination.value = icao
+        _disttodestination.value = dist
+
     }
+
 }

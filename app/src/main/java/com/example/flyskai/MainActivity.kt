@@ -9,6 +9,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -31,8 +32,8 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+//import kotlinx.coroutines.flow.MutableStateFlow
+//import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.atan2
@@ -61,13 +62,13 @@ class MainActivity : AppCompatActivity() {
 
     private var skipFirstFix = false
     private var lastRotationVector: FloatArray = FloatArray(3)
-    private val _northUpMode = MutableStateFlow(true)
-    val northUpMode: StateFlow<Boolean> = _northUpMode
+    //private val _northUpMode = MutableStateFlow(true)
+    //val northUpMode: StateFlow<Boolean> = _northUpMode
 
-    fun toggleNorthUp() {
-        _northUpMode.value = !_northUpMode.value
-    }
-
+//    fun toggleNorthUp() {
+//        _northUpMode.value = !_northUpMode.value
+//    }
+//
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,7 +109,6 @@ class MainActivity : AppCompatActivity() {
                         val altitude = location.altitude
                         val bearing = location.bearing
 
-                        // 1. Compute rotation matrix and true heading
                         val rotationMatrix = FloatArray(9)
                         val orientation = FloatArray(3)
                         var trueHeading = 0f
@@ -121,7 +121,6 @@ class MainActivity : AppCompatActivity() {
                         }
 
 
-                        // 2. Compute geomagnetic field and magnetic heading
                         val geoField = GeomagneticField(
                             lat.toFloat(),
                             lon.toFloat(),
@@ -130,8 +129,6 @@ class MainActivity : AppCompatActivity() {
                         )
                         val magneticHeading = (trueHeading - geoField.declination + 360) % 360
 
-
-                        // 3. Compute courseToDest if destination is set
                         val courseToDest = selectedDestinationLatLon?.let { (destLat, destLon) ->
                             computeCourseToDestination(
                                 currentLat = lat,
@@ -139,7 +136,7 @@ class MainActivity : AppCompatActivity() {
                                 destLat = destLat,
                                 destLon = destLon
                             )
-                        } ?: 0f // fallback to 0 if no destination selected
+                        } ?: 0f
 
 
                         withContext(Dispatchers.Main) {
@@ -188,17 +185,24 @@ class MainActivity : AppCompatActivity() {
         sensorManager.unregisterListener(sensorListener)
     }
 
+
+
     private fun setupToolbarObservers() {
         homeViewModel.locationState.observe(this) { state ->
             val track = state.bearing
-            //val heading = homeViewModel.heading.value ?: 0f
+            val destination = knownAirports.find { it.icao == selectedIcao }?.name.orEmpty()
+
             binding.appBarMain.composeCockpitView.setContent {
-                CockPit(track = track, trueHeading = state.trueHeading, magneticHeading = state.magneticHeading,
+                CockPit(track = track, trueHeading = state.trueHeading,
+                    magneticHeading = state.magneticHeading,
                     speed = state.speed,
                     altitude = state.altitude.toFloat(),
                     verticalSpeed = state.verticalSpeed,
                     flightPhase = state.flightPhase,
-                    northUpMode= false, course = state.courseToDest)
+                    northUpMode= false, course = state.courseToDest,
+                    destination = destination,
+                    currentLat =  state.coordinates.latitude, currentLon = state.coordinates.longitude,
+                    )
             }
         }
     }
@@ -270,7 +274,6 @@ class MainActivity : AppCompatActivity() {
         val bearingDeg = (Math.toDegrees(initialBearingRad) + 360) % 360
         return bearingDeg.toFloat()
     }
-
 
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>, grantResults: IntArray

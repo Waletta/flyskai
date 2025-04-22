@@ -94,7 +94,8 @@ fun CockPit(
                 .fillMaxWidth(0.6f)
                 .aspectRatio(1f)
                 .padding(bottom = 16.dp)) {
-                HeadingTrackCompass(track, trueHeading, magneticHeading, pitch, bank, drift, verticalSpeed, northUpMode, course, destination, currentLat, currentLon)
+                HeadingTrackCompass(track, trueHeading, magneticHeading, pitch, bank, drift, verticalSpeed, northUpMode, course, destination, currentLat, currentLon,
+                )
             }
 
             // Altitude Tape
@@ -123,7 +124,7 @@ fun HeadingTrackCompass(
     destination: String = "",
     currentLat: Double = 0.0,
     currentLon: Double = 0.0,
-) {
+    ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = size.minDimension / 2f - 12f
@@ -330,11 +331,10 @@ fun HeadingTrackCompass(
                 labelPaint.color = "#FFA500".toColorInt()
                 val destinationAirport = knownAirports.find { it.icao.equals(destination, ignoreCase = true) }
                 val airportName = destinationAirport?.name ?: destination.uppercase()
-
                 val distanceKm = destinationAirport?.let {
                     haversine(currentLat, currentLon, it.lat, it.lon)
                 } ?: 0.0
-
+                
                 val distanceStr = String.format(Locale.US, "%.0f km", distanceKm)
                 val destinationLabel = "DST  ${airportName.uppercase()}  $distanceStr"
                 drawText(
