@@ -1,8 +1,6 @@
-package com.example.flyskai
+package com.example.flyskai.ui.shared
 
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.MutableState
 
 enum class UnitSystem {

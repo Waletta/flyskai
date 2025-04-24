@@ -11,7 +11,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
-import com.example.flyskai.AppSettings
+import com.example.flyskai.ui.shared.AppSettings
 import com.example.flyskai.R
 import com.example.flyskai.databinding.FragmentHomeBinding
 import com.example.flyskai.ui.shared.CockPitViewModel
@@ -26,6 +26,7 @@ import com.mapbox.maps.plugin.annotation.generated.*
 import com.mapbox.maps.plugin.locationcomponent.location
 import kotlinx.coroutines.launch
 import model.knownAirports
+import model.FlightPosition
 import kotlin.math.abs
 
 
@@ -104,7 +105,6 @@ class HomeFragment : Fragment() {
         val builder = android.app.AlertDialog.Builder(requireContext())
         builder.setTitle("Select Destination")
 
-        // Add "Clear Destination" option if a destination is set
         val currentDestination = cpFlightViewModel.destination.value.orEmpty()
         val options = if (currentDestination.isNotBlank()) {
             arrayOf("Clear Destination") + airportNames
@@ -123,7 +123,6 @@ class HomeFragment : Fragment() {
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
-                // Set new destination
                 val selectedIndex = if (currentDestination.isNotBlank()) which - 1 else which
                 val selectedAirport = knownAirports[selectedIndex]
                 cpFlightViewModel.setDestination(selectedAirport.icao)
@@ -157,26 +156,21 @@ class HomeFragment : Fragment() {
                 .withTextOffset(listOf(0.0, 1.5))
                 .withTextSize(12.0)
             pointAnnotationManager.create(options)
-
-
+            
             lastKnownLocation?.let { currentLocation ->
-                // Calculate bounding box
                 val minLat = minOf(currentLocation.latitude(), point.latitude())
                 val maxLat = maxOf(currentLocation.latitude(), point.latitude())
                 val minLon = minOf(currentLocation.longitude(), point.longitude())
                 val maxLon = maxOf(currentLocation.longitude(), point.longitude())
 
-                // Calculate center of the bounding box
                 val centerLat = (minLat + maxLat) / 2.0
                 val centerLon = (minLon + maxLon) / 2.0
                 val centerPoint = Point.fromLngLat(centerLon, centerLat)
 
-                // Estimate zoom level based on distance
                 val latDelta = abs(maxLat - minLat)
                 val lonDelta = abs(maxLon - minLon)
-                val maxDelta = maxOf(latDelta, lonDelta) // Use the larger delta to ensure both points fit
+                val maxDelta = maxOf(latDelta, lonDelta)
 
-                // Approximate zoom level (adjust these values based on your map's viewport)
                 val zoomLevel = when {
                     maxDelta > 20.0 -> 2.0  // Very far (e.g., intercontinental)
                     maxDelta > 10.0 -> 4.0  // Far (e.g., across a country)
@@ -186,9 +180,7 @@ class HomeFragment : Fragment() {
                     else -> 12.0            // Very close
                 }
 
-                // Apply padding (reduce zoom slightly to add margin)
                 val paddedZoom = zoomLevel - 0.7
-                // Center map on destination
                 mapView.mapboxMap.easeTo(
                     CameraOptions.Builder()
                         .center(centerPoint)
@@ -211,12 +203,9 @@ class HomeFragment : Fragment() {
         dialog.setOnShowListener {
             val positiveButton = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
             val negativeButton = dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)
-
             val bColor = android.graphics.Color.WHITE
-
             positiveButton.setTextColor(bColor)
             negativeButton.setTextColor(bColor)
-
             positiveButton.setOnClickListener {
                 Toast.makeText(requireContext(), "Downloading AI model…", Toast.LENGTH_SHORT).show()
                 //downloadAIModel()
@@ -246,7 +235,6 @@ class HomeFragment : Fragment() {
             if (currentDestination.isNotBlank()) {
                 updateDestinationAnnotation(currentDestination)
             }
-
 
             mapView.location.addOnIndicatorPositionChangedListener { point ->
                 lastKnownLocation = point
@@ -285,7 +273,6 @@ class HomeFragment : Fragment() {
 
         val url = "https://opensky-network.org/api/states/all?" +
                 "lamin=$minLat&lamax=$maxLat&lomin=$minLon&lomax=$maxLon"
-
         Thread {
             try {
                 val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
@@ -310,7 +297,6 @@ class HomeFragment : Fragment() {
     }
 
 
-    data class FlightPosition(val icao24: String, val callsign: String?, val lat: Double, val lon: Double)
     private fun parseOpenSkyFlights(json: String): List<FlightPosition> {
         val result = mutableListOf<FlightPosition>()
         val jsonObject = org.json.JSONObject(json)
@@ -382,7 +368,4 @@ class HomeFragment : Fragment() {
         // Auto dismiss after 3 seconds
         targetView.postDelayed({ popup.dismiss() }, 3000)
     }
-
-
-
 }

@@ -1,7 +1,7 @@
 package com.example.flyskai.ui.components
 
 import android.graphics.Typeface
-import com.example.flyskai.AppSettings
+import com.example.flyskai.ui.shared.AppSettings
 import java.util.Locale
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -22,7 +22,7 @@ import kotlin.math.sin
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
-import com.example.flyskai.AltitudeUnit
+import com.example.flyskai.ui.shared.AltitudeUnit
 import kotlin.math.abs
 import androidx.core.graphics.toColorInt
 import model.Coordinates
@@ -36,6 +36,7 @@ import com.example.flyskai.ui.shared.CockPitViewModel
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.asFlow
+import com.example.flyskai.ui.shared.SpeedUnit
 
 @Composable
 fun CockPit(cpVm: CockPitViewModel
@@ -382,8 +383,8 @@ fun formatVerticalSpeed(vs: Float): Int {
 
 fun formatSpeed(mps: Float): Int {
     return when (AppSettings.speedUnit) {
-        com.example.flyskai.SpeedUnit.KMH -> (mps * 3.6).toInt()
-        com.example.flyskai.SpeedUnit.KNOTS -> (mps * 1.94384).toInt()
+        SpeedUnit.KMH -> (mps * 3.6).toInt()
+        SpeedUnit.KNOTS -> (mps * 1.94384).toInt()
     }
 }
 

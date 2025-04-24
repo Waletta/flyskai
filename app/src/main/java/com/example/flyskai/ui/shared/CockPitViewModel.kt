@@ -79,7 +79,7 @@ class CockPitViewModel : ViewModel() {
         val deltaAlt = altitude - lastAltitude
         val rawVerticalSpeed = if (deltaTimeSec > 0.001) (deltaAlt / deltaTimeSec).toFloat() else 0f
         val smoothedVerticalSpeed = vsiSmoother.smooth(rawVerticalSpeed)
-        // Compute magnetic heading
+
         val geoField = GeomagneticField(
             coordinates.latitude.toFloat(),
             coordinates.longitude.toFloat(),

@@ -1,6 +1,7 @@
 package model
 
 data class Airport(val icao: String, val name: String, val lat: Double, val lon: Double)
+data class FlightPosition(val icao24: String, val callsign: String?, val lat: Double, val lon: Double)
 
 val knownAirports = listOf(
     Airport("LIBR", "Brindisi", 40.65696, 17.94532),
@@ -59,4 +60,15 @@ data class AircraftStateData(
 data class Coordinates(
     val latitude: Double = 0.00,
     val longitude: Double = 0.00,
+)
+
+data class AircraftStateIcao(
+    val icao24: String,
+    val callsign: String?,
+    val originCountry: String,
+    val longitude: Double?,
+    val latitude: Double?,
+    val baroAltitude: Double?,
+    val velocity: Double?,
+    val heading: Double?
 )
