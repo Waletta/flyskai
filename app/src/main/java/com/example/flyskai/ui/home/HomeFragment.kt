@@ -12,7 +12,7 @@ import androidx.fragment.app.activityViewModels
 import com.example.flyskai.AppSettings
 import com.example.flyskai.R
 import com.example.flyskai.databinding.FragmentHomeBinding
-import com.example.flyskai.ui.shared.SharedFlightViewModel
+import com.example.flyskai.ui.shared.CockPitViewModel
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
@@ -26,7 +26,6 @@ import model.knownAirports
 
 class HomeFragment : Fragment() {
 
-    //private val sharedViewModel: SharedLlmModel by activityViewModels()
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
@@ -37,7 +36,7 @@ class HomeFragment : Fragment() {
     private lateinit var pointAnnotationManager: PointAnnotationManager
 
     private val airportNames = knownAirports.map { it.name }.toTypedArray()
-    private val sharedFlightViewModel: SharedFlightViewModel by activityViewModels()
+    private val cpFlightViewModel: CockPitViewModel by activityViewModels()
     private var isSeated = false
 
 
@@ -49,14 +48,12 @@ class HomeFragment : Fragment() {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val onboardItemView = binding.bottomNavigation.findViewById<View>(R.id.navigation_onboard)
         onboardItemView.setOnLongClickListener {
-            showPopover(it, "Tap when you're seated.")
+            showPopover(it)
             true
         }
         mapView = MapView(requireContext())
         binding.mapContainer.addView(mapView)
-
         initMap()
-
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_ai -> {
@@ -65,23 +62,23 @@ class HomeFragment : Fragment() {
                 }
                 R.id.navigation_onboard -> {
                     val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
-
                     if (isSeated) {
                         unseat()
                     }
                     else {
-                    val builder = android.app.AlertDialog.Builder(requireContext())
-                    builder.setTitle("Select your destination")
-                    builder.setItems(airportNames) { _, which ->
-                        val selectedAirport = knownAirports[which]
-                        sharedFlightViewModel.setDestination(selectedAirport.icao)
-                        Toast.makeText(
-                            requireContext(),
-                            "Destination set: ${selectedAirport.name}\nLet’s fly this bird!",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                        isSeated = true
+                        val builder = android.app.AlertDialog.Builder(requireContext())
+                        builder.setTitle("Select your destination")
+                        builder.setItems(airportNames) { _, which ->
+                            val selectedAirport = knownAirports[which]
+                            cpFlightViewModel.setDestination(selectedAirport.icao)
+                            Toast.makeText(
+                                requireContext(),
+                                "Destination set: ${selectedAirport.name}\nLet’s fly this bird!",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            isSeated = true
+                        }
+
                         menuItem.setIcon(R.drawable.baseline_airline_seat_recline_extra_24)
                         builder.setCancelable(true)
                         builder.show()
@@ -139,11 +136,9 @@ class HomeFragment : Fragment() {
         dialog.show()
     }
 
-
-
     private fun unseat() {
         val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
-        sharedFlightViewModel.setDestination("")
+        cpFlightViewModel.setDestination("")
         isSeated = false
         menuItem.setIcon(R.drawable.baseline_connecting_airports_24)
         Toast.makeText(requireContext(), "You’ve unseated. Ready to reset destination.", Toast.LENGTH_SHORT).show()
@@ -245,13 +240,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun showFlightsOnMap(flights: List<FlightPosition>) {
-        pointAnnotationManager.deleteAll() // Clear old markers
+        pointAnnotationManager.deleteAll()
 
         val drawable = AppCompatResources.getDrawable(requireContext(), R.drawable.ic_aircraft)
         val bitmap = drawable?.toBitmap()
 
         if (bitmap == null) {
-            println("❌ Could not decode flight icon bitmap.")
+            println("Could not decode flight icon bitmap.")
             return
         }
 
@@ -269,11 +264,11 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun showPopover(targetView: View, message: String) {
+    private fun showPopover(targetView: View) {
         val popup = android.widget.PopupWindow(requireContext())
 
         val textView = android.widget.TextView(requireContext()).apply {
-            text = message
+            text = "Tap when you're seated."
             setPadding(24, 16, 24, 16)
             setBackgroundResource(R.drawable.popover_background)
             setTextColor(android.graphics.Color.WHITE)

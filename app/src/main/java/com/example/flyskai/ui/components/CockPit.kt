@@ -35,41 +35,45 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
 import com.example.flyskai.AltitudeUnit
-import model.FlightPhase
 import kotlin.math.abs
 import androidx.core.graphics.toColorInt
+import model.Coordinates
 import model.knownAirports
 import java.lang.Math.toRadians
 import kotlin.math.atan2
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+import com.example.flyskai.ui.shared.CockPitViewModel
+
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.asFlow
+
 @Composable
 fun CockPit(
-    track: Float,
-    trueHeading: Float,
-    magneticHeading: Float,
-    speed: Float,
-    altitude: Float,
-    verticalSpeed: Float,
-    flightPhase: FlightPhase,
     pitch: Float = 0f,
     bank: Float = 0f,
-    northUpMode: Boolean,
     course: Float = 0f,
     destination: String = "",
-    currentLat: Double = 0.0,
-    currentLon: Double = 0.0,
-) {
+    rtcoordinates: Coordinates,
+    ) {
 
-    val drift = ((track - magneticHeading + 360) % 360).let {
+
+    val cpVm: CockPitViewModel = CockPitViewModel()
+    val locationState by cpVm.locationState.asFlow().collectAsStateWithLifecycle(null)
+    val track = locationState?.bearing ?: 0f
+    val trueHeading = locationState?.trueHeading ?: 0f
+    val magneticHeading = locationState?.magneticHeading ?: 0f
+    val speed = locationState?.speed ?: 0f
+    val altitude = locationState?.altitude?.toFloat() ?: 0f
+    val verticalSpeed = locationState?.verticalSpeed ?: 0f
+
+    val drift = ((track - trueHeading + 360) % 360).let {
         if (it > 180) it - 360 else it
     }
-
     val speedUnit = maxOf(0, formatSpeed(speed))
     val altitudeUnit = maxOf(0, formatAltitude(altitude))
 
-    BankPitchWarningOverlay(bankAngle = bank, pitchAngle = pitch)
     Box(
         modifier = Modifier
             .background(Color.Black)
@@ -94,7 +98,17 @@ fun CockPit(
                 .fillMaxWidth(0.6f)
                 .aspectRatio(1f)
                 .padding(bottom = 16.dp)) {
-                HeadingTrackCompass(track, trueHeading, magneticHeading, pitch, bank, drift, verticalSpeed, northUpMode, course, destination, currentLat, currentLon,
+                HeadingTrackCompass(
+                    track = track,
+                    trueHeading = trueHeading,
+                    magneticHeading = magneticHeading,
+                    pitch = pitch,
+                    bank = bank,
+                    drift = drift,
+                    verticalSpeed = verticalSpeed,
+                    course = course,
+                    destination = destination,
+                    coordinates = rtcoordinates,
                 )
             }
 
@@ -119,12 +133,10 @@ fun HeadingTrackCompass(
     bank: Float,
     drift: Float,
     verticalSpeed: Float,
-    northUp: Boolean,
     course: Float,
     destination: String = "",
-    currentLat: Double = 0.0,
-    currentLon: Double = 0.0,
-    ) {
+    coordinates: Coordinates
+) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = size.minDimension / 2f - 12f
@@ -139,17 +151,15 @@ fun HeadingTrackCompass(
         }
 
         // ARTIFICIAL HORIZON BACKGROUND
-        // In north-up mode, we rotate the horizon instead of the compass
-        val rotationAngle = if (northUp) -bank else -bank
-        rotate(-bank, pivot = center) {
-            val pitchOffset = pitch * 3  // scale pitch visually
+         rotate(-bank, pivot = center) {
+            val pitchOffset = pitch * 3
             drawRect(
-                color = Color(0xFF4FC3F7), // Sky blue
+                color = Color(0xFF4FC3F7),
                 topLeft = Offset(0f, center.y - radius + pitchOffset),
                 size = size.copy(height = radius + pitchOffset)
             )
             drawRect(
-                color = Color(0xFF795548), // Brown for ground
+                color = Color(0xFF795548),
                 topLeft = Offset(0f, center.y + pitchOffset),
                 size = size.copy(height = radius - pitchOffset)
             )
@@ -162,8 +172,6 @@ fun HeadingTrackCompass(
         }
 
         // COMPASS ROSE - Fixed in north-up mode
-        val compassRotation = if (northUp) 0f else -magneticHeading
-        rotate(compassRotation, pivot = center) {
             for (angle in 0 until 360 step 3) {
                 val rad = toRadians((angle - 90).toDouble())
                 val start = Offset(
@@ -182,9 +190,8 @@ fun HeadingTrackCompass(
                     cap = StrokeCap.Round
                 )
 
-                if (angle % 30 == 0) {
+                if (angle % 30 == 0 && angle != 0 && angle != 360) {
                     val (label, fontSize) = when (angle) {
-                        0, 360 -> "N" to cardinalFontSize
                         90 -> "E" to cardinalFontSize
                         180 -> "S" to cardinalFontSize
                         270 -> "W" to cardinalFontSize
@@ -209,11 +216,10 @@ fun HeadingTrackCompass(
                     }
                 }
             }
-        }
+
 
         // TRACK ARROW - Adjust rotation for north-up mode
-        val trackRotation = if (northUp) track else track - magneticHeading
-        rotate(trackRotation, pivot = center) {
+        rotate(track, pivot = center) {
             drawLine(
                 color = Color.Green,
                 start = center,
@@ -224,8 +230,7 @@ fun HeadingTrackCompass(
 
         // COURSE TO DESTINATION ARROW
         if(destination.isNotBlank()){
-            val courseRotation = if (northUp) course else course - magneticHeading
-            rotate(courseRotation, pivot = center) {
+            rotate(course, pivot = center) {
                 drawLine(
                     color = Color(0xFFFFA500),
                     start = center,
@@ -235,40 +240,10 @@ fun HeadingTrackCompass(
             }
         }
 
-        // HEADING ARROW (blue) - Only shown in heading-up mode
-        if (!northUp) {
-            rotate(magneticHeading, pivot = center) {
-                drawLine(
-                    color = Color.Cyan,
-                    start = center,
-                    end = Offset(center.x, center.y - radius),
-                    strokeWidth = 6f
-                )
-            }
-        }
 
-        // Drift ARROW
-//        rotate(magneticHeading + drift, pivot = center) {
-//            drawLine(
-//                color = Color.Magenta,
-//                start = center,
-//                end = Offset(center.x, center.y - radius * 0.7f),
-//                strokeWidth = 4f,
-//                pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), 0f)
-//            )
-//        }
-
-        // HDG ARROW (centered)
-//        drawLine(
-//            color = Color.Cyan,
-//            start = Offset(center.x, center.y),
-//            end = Offset(center.x, center.y - radius),
-//            strokeWidth = 6f
-//        )
 
         // AIRCRAFT SYMBOL - Rotate for north-up mode
-        val aircraftRotation = if (northUp) magneticHeading else 0f
-        rotate(aircraftRotation, pivot = center) {
+        rotate(magneticHeading, pivot = center) {
             val triangleSize = 20f
             drawLine(
                 color = Color.White,
@@ -283,17 +258,35 @@ fun HeadingTrackCompass(
                 strokeWidth = 4f
             )
 
-            // Add small heading indicator at bottom of aircraft symbol
-            if (northUp) {
-                drawLine(
-                    color = Color.Cyan,
-                    start = Offset(center.x, center.y + triangleSize),
-                    end = Offset(center.x, center.y + triangleSize + 15f),
-                    strokeWidth = 3f
-                )
-            }
+            // Small heading indicator at bottom of aircraft symbol
+            drawLine(
+                color = Color.Cyan,
+                start = Offset(center.x, center.y + triangleSize),
+                end = Offset(center.x, center.y + triangleSize + 15f),
+                strokeWidth = 3f
+            )
         }
 
+
+        // NORTH LABEL
+        val rad = toRadians(-90.0) // North at 0/360 degrees
+        val textOffset = Offset(
+            x = center.x + (radius - 25f) * cos(rad).toFloat(),
+            y = center.y + (radius - 25f) * sin(rad).toFloat()
+        )
+        drawContext.canvas.nativeCanvas.apply {
+            drawText(
+                "N",
+                textOffset.x,
+                textOffset.y,
+                android.graphics.Paint().apply {
+                    color = android.graphics.Color.WHITE
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    textSize = cardinalFontSize.toPx()
+                    isFakeBoldText = true
+                }
+            )
+        }
 
         drawContext.canvas.nativeCanvas.apply {
             val verticalStart = center.y + radius + 60f
@@ -332,9 +325,9 @@ fun HeadingTrackCompass(
                 val destinationAirport = knownAirports.find { it.icao.equals(destination, ignoreCase = true) }
                 val airportName = destinationAirport?.name ?: destination.uppercase()
                 val distanceKm = destinationAirport?.let {
-                    haversine(currentLat, currentLon, it.lat, it.lon)
+                    haversine(coordinates.latitude, coordinates.longitude, it.lat, it.lon)
                 } ?: 0.0
-                
+
                 val distanceStr = String.format(Locale.US, "%.0f km", distanceKm)
                 val destinationLabel = "DST  ${airportName.uppercase()}  $distanceStr"
                 drawText(
@@ -344,7 +337,6 @@ fun HeadingTrackCompass(
                     labelPaint
                 )
             }
-
 
             // BANK ANGLE (Right Top — replaces TH)
             labelPaint.color = android.graphics.Color.WHITE

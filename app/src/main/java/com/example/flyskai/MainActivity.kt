@@ -9,7 +9,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -23,8 +22,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import com.example.flyskai.databinding.ActivityMainBinding
-import com.example.flyskai.ui.shared.SharedFlightViewModel
-import com.google.android.gms.location.FusedLocationProviderClient
+import com.example.flyskai.ui.shared.CockPitViewModel
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -32,10 +30,10 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-//import kotlinx.coroutines.flow.MutableStateFlow
-//import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import model.Coordinates
+import model.LocationState
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -47,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val fusedLocationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val locationPermissionRequest = 100
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
@@ -55,30 +53,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rotationSensor: Sensor
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
-    private val sharedFlightViewModel: SharedFlightViewModel by viewModels()
+    private val cpViewModel: CockPitViewModel by viewModels()
     private var selectedDestinationLatLon: Pair<Double, Double>? = null
     private var selectedIcao: String? = null
+    private var currentTrueHeading: Float = 0f
 
 
     private var skipFirstFix = false
-    private var lastRotationVector: FloatArray = FloatArray(3)
-    //private val _northUpMode = MutableStateFlow(true)
-    //val northUpMode: StateFlow<Boolean> = _northUpMode
 
-//    fun toggleNorthUp() {
-//        _northUpMode.value = !_northUpMode.value
-//    }
-//
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        sharedFlightViewModel.destination.observe(this) { icao ->
+        cpViewModel.destination.observe(this) { icao ->
             if (!icao.isNullOrBlank()) {
                 val airport = knownAirports.find { it.icao == icao }
                 if (airport != null) {
@@ -109,17 +101,7 @@ class MainActivity : AppCompatActivity() {
                         val altitude = location.altitude
                         val bearing = location.bearing
 
-                        val rotationMatrix = FloatArray(9)
-                        val orientation = FloatArray(3)
-                        var trueHeading = 0f
-
-                        rotationSensor.let { sensor ->
-                            SensorManager.getRotationMatrixFromVector(rotationMatrix, lastRotationVector)
-                            SensorManager.getOrientation(rotationMatrix, orientation)
-                            trueHeading = Math.toDegrees(orientation[0].toDouble()).toFloat()
-                            trueHeading = (trueHeading + 360) % 360 // normalize
-                        }
-
+                        val trueHeading = currentTrueHeading
 
                         val geoField = GeomagneticField(
                             lat.toFloat(),
@@ -138,9 +120,8 @@ class MainActivity : AppCompatActivity() {
                             )
                         } ?: 0f
 
-
                         withContext(Dispatchers.Main) {
-                            homeViewModel.updateLocationData(lat, lon, speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
+                            cpViewModel.updateLocationData(Coordinates(lat, lon), speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
                         }
                     }
                 }
@@ -185,10 +166,9 @@ class MainActivity : AppCompatActivity() {
         sensorManager.unregisterListener(sensorListener)
     }
 
-
-
     private fun setupToolbarObservers() {
-        homeViewModel.locationState.observe(this) { state ->
+        cpViewModel.locationState.observe(this) { state: LocationState ->
+            Log.d("MainActivity", "LocationState: $state")
             val track = state.bearing
             val destination = knownAirports.find { it.icao == selectedIcao }?.name.orEmpty()
 
@@ -201,8 +181,9 @@ class MainActivity : AppCompatActivity() {
                     flightPhase = state.flightPhase,
                     northUpMode= false, course = state.courseToDest,
                     destination = destination,
-                    currentLat =  state.coordinates.latitude, currentLon = state.coordinates.longitude,
-                    )
+                    rtcoordinates =  state.coordinates,
+                    destcoordinates = state.coordinates,
+                )
             }
         }
     }
@@ -233,7 +214,8 @@ class MainActivity : AppCompatActivity() {
                 val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
                 val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
                 val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
-                homeViewModel.updateDeviceHeading(pitch, bank, (azimuth + 360) % 360)
+                currentTrueHeading = (azimuth + 360) % 360
+                homeViewModel.updateDeviceHeading(pitch, bank, currentTrueHeading)
             }
         }
 

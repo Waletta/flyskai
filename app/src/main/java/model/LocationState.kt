@@ -23,15 +23,24 @@ enum class FlightPhase {
 
 data class LocationState(
     val coordinates: Coordinates,
-    val speed: Float,     // km/h
-    val altitude: Double, // meters
-    val bearing: Float,    // degrees
+    val speed: Float,
+    val altitude: Double,
+    val bearing: Float,
     val verticalSpeed: Float = 0f,
     val flightPhase: FlightPhase = FlightPhase.IDLE,
-    val trueHeading: Float = 0f,     // from sensor (rotation vector)
-    val magneticHeading: Float = 0f,  // adjusted with geomagnetic declination
+    val trueHeading: Float = 0f,
+    val magneticHeading: Float = 0f,
     val courseToDest: Float = 0f,
-)
+) {
+    companion object {
+        fun Coordinates(
+            latitude: Double,
+            longitude: Double
+        ): Coordinates {
+            return Coordinates(latitude, longitude)
+        }
+    }
+}
 
 data class Coordinates(
     val latitude: Double,

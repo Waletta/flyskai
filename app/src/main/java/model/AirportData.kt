@@ -12,5 +12,5 @@ val knownAirports = listOf(
     Airport("LIPA", "Paris CDG", 49.00858, 2.55070),
     Airport("LIMA", "Malaga", 36.67763, -4.49375),
     Airport("LITA", "Tallin", 59.41463, 24.83349),
-    )
+)
 
