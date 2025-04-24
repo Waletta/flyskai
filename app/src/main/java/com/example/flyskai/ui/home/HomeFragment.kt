@@ -187,7 +187,7 @@ class HomeFragment : Fragment() {
                 }
 
                 // Apply padding (reduce zoom slightly to add margin)
-                val paddedZoom = zoomLevel - 0.5
+                val paddedZoom = zoomLevel - 0.7
                 // Center map on destination
                 mapView.mapboxMap.easeTo(
                     CameraOptions.Builder()
