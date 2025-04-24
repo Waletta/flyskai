@@ -1,31 +1,19 @@
 package com.example.flyskai.ui.components
 
 import android.graphics.Typeface
-import com.example.flyskai.R
 import com.example.flyskai.AppSettings
 import java.util.Locale
-
-import android.media.MediaPlayer
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,23 +38,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.asFlow
 
 @Composable
-fun CockPit(
-    pitch: Float = 0f,
-    bank: Float = 0f,
-    course: Float = 0f,
-    destination: String = "",
-    rtcoordinates: Coordinates,
+fun CockPit(cpVm: CockPitViewModel
     ) {
 
+    val acState by cpVm.acState.asFlow().collectAsStateWithLifecycle(null)
+    val destination by cpVm.destination.asFlow().collectAsStateWithLifecycle("") // Observe destination
+    val course = acState?.courseToDest
 
-    val cpVm: CockPitViewModel = CockPitViewModel()
-    val locationState by cpVm.locationState.asFlow().collectAsStateWithLifecycle(null)
-    val track = locationState?.bearing ?: 0f
-    val trueHeading = locationState?.trueHeading ?: 0f
-    val magneticHeading = locationState?.magneticHeading ?: 0f
-    val speed = locationState?.speed ?: 0f
-    val altitude = locationState?.altitude?.toFloat() ?: 0f
-    val verticalSpeed = locationState?.verticalSpeed ?: 0f
+    val pitch = acState?.pitch ?: 0f
+    val bank = acState?.bank ?: 0f
+    val speed = acState?.speed ?: 0f
+    val track = acState?.bearing ?: 0f
+    val trueHeading = acState?.trueHeading ?: 0f
+    val magneticHeading = acState?.magneticHeading ?: 0f
+    val altitude = acState?.altitude?.toFloat() ?: 0f
+    val verticalSpeed = acState?.verticalSpeed ?: 0f
+    val rtcoordinates = acState?.coordinates
 
     val drift = ((track - trueHeading + 360) % 360).let {
         if (it > 180) it - 360 else it
@@ -100,14 +87,13 @@ fun CockPit(
                 .padding(bottom = 16.dp)) {
                 HeadingTrackCompass(
                     track = track,
-                    trueHeading = trueHeading,
                     magneticHeading = magneticHeading,
                     pitch = pitch,
                     bank = bank,
                     drift = drift,
                     verticalSpeed = verticalSpeed,
-                    course = course,
-                    destination = destination,
+                    course = course?.toFloat(),
+                    destination = destination.toString(),
                     coordinates = rtcoordinates,
                 )
             }
@@ -127,15 +113,14 @@ fun CockPit(
 @Composable
 fun HeadingTrackCompass(
     track: Float,
-    trueHeading: Float,
     magneticHeading: Float,
     pitch: Float,
     bank: Float,
     drift: Float,
     verticalSpeed: Float,
-    course: Float,
+    course: Float?,
     destination: String = "",
-    coordinates: Coordinates
+    coordinates: Coordinates?
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2f, size.height / 2f)
@@ -230,7 +215,7 @@ fun HeadingTrackCompass(
 
         // COURSE TO DESTINATION ARROW
         if(destination.isNotBlank()){
-            rotate(course, pivot = center) {
+            rotate(course?.toFloat() ?: 0f, pivot = center) {
                 drawLine(
                     color = Color(0xFFFFA500),
                     start = center,
@@ -244,26 +229,26 @@ fun HeadingTrackCompass(
 
         // AIRCRAFT SYMBOL - Rotate for north-up mode
         rotate(magneticHeading, pivot = center) {
-            val triangleSize = 20f
+            val triangleSize = 30f
             drawLine(
-                color = Color.White,
+                color = Color.Yellow,
                 start = Offset(center.x - triangleSize, center.y + triangleSize),
                 end = center,
-                strokeWidth = 4f
+                strokeWidth = 6f
             )
             drawLine(
-                color = Color.White,
+                color = Color.Yellow,
                 start = Offset(center.x + triangleSize, center.y + triangleSize),
                 end = center,
-                strokeWidth = 4f
+                strokeWidth = 6f
             )
 
             // Small heading indicator at bottom of aircraft symbol
             drawLine(
-                color = Color.Cyan,
+                color = Color.Yellow,
                 start = Offset(center.x, center.y + triangleSize),
                 end = Offset(center.x, center.y + triangleSize + 15f),
-                strokeWidth = 3f
+                strokeWidth = 4f
             )
         }
 
@@ -311,7 +296,7 @@ fun HeadingTrackCompass(
             val paddedVsi = String.format(Locale.US,"%04d", abs(vsi))
             val signedVsi = if (vsi >= 0) "+$paddedVsi" else "-$paddedVsi"
             val formattedVsi = "VSI   $signedVsi $vsiLabel"
-            labelPaint.color = android.graphics.Color.YELLOW
+            labelPaint.color = android.graphics.Color.CYAN
             drawText(
                 formattedVsi,
                 8f,
@@ -324,10 +309,11 @@ fun HeadingTrackCompass(
                 labelPaint.color = "#FFA500".toColorInt()
                 val destinationAirport = knownAirports.find { it.icao.equals(destination, ignoreCase = true) }
                 val airportName = destinationAirport?.name ?: destination.uppercase()
-                val distanceKm = destinationAirport?.let {
-                    haversine(coordinates.latitude, coordinates.longitude, it.lat, it.lon)
-                } ?: 0.0
-
+                val distanceKm = if (destinationAirport != null && coordinates != null) {
+                    haversine(coordinates.latitude, coordinates.longitude, destinationAirport.lat, destinationAirport.lon)
+                } else {
+                    0.0
+                }
                 val distanceStr = String.format(Locale.US, "%.0f km", distanceKm)
                 val destinationLabel = "DST  ${airportName.uppercase()}  $distanceStr"
                 drawText(
@@ -377,63 +363,6 @@ fun HeadingTrackCompass(
     }
 }
 
-@Composable
-fun FlashingWarningText(text: String) {
-    val infiniteTransition = rememberInfiniteTransition()
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500), // 0.5s per cycle
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-
-    Text(
-        text = text,
-        color = Color.Yellow,
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .background(Color.Red.copy(alpha = alpha))
-            .padding(8.dp)
-    )
-}
-
-
-@Composable
-fun BankPitchWarningOverlay(bankAngle: Float, pitchAngle: Float) {
-    val context = LocalContext.current
-    val soundPlayed = remember { mutableStateOf(false) }
-
-    val bankExceeded = bankAngle > 30f || bankAngle < -30f
-    val pitchExceeded = pitchAngle > 20f || pitchAngle < -10f
-
-    // Play sound on first entry
-    LaunchedEffect(bankExceeded, pitchExceeded) {
-        if ((bankExceeded || pitchExceeded) && !soundPlayed.value) {
-            val mediaPlayer = MediaPlayer.create(context, R.raw.alert_beep)
-            mediaPlayer.start()
-            soundPlayed.value = true
-        } else if (!bankExceeded && !pitchExceeded) {
-            soundPlayed.value = false // Reset when safe
-        }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (bankExceeded) {
-            FlashingWarningText("⚠ Bank Angle Exceeded!")
-        }
-
-        if (pitchExceeded) {
-            FlashingWarningText("⚠ Pitch Angle Exceeded!")
-        }
-    }
-}
 
 fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val r = 6371.0 // Earth radius in km

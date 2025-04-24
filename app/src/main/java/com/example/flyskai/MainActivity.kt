@@ -2,9 +2,7 @@ package com.example.flyskai
 
 import android.Manifest
 import com.example.flyskai.ui.components.CockPit
-import com.example.flyskai.ui.home.HomeViewModel
 import android.content.pm.PackageManager
-import android.hardware.GeomagneticField
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -33,22 +31,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import model.Coordinates
-import model.LocationState
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-
 import model.knownAirports
-
 
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
-    private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
     private val fusedLocationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val locationPermissionRequest = 100
-    private lateinit var locationCallback: LocationCallback
-    private lateinit var locationRequest: LocationRequest
+    private lateinit var acCallback: LocationCallback
+    private lateinit var acRequest: LocationRequest
     private lateinit var sensorManager: SensorManager
     private lateinit var rotationSensor: Sensor
     private val rotationMatrix = FloatArray(9)
@@ -58,9 +49,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedIcao: String? = null
     private var currentTrueHeading: Float = 0f
 
-
     private var skipFirstFix = false
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +57,6 @@ class MainActivity : AppCompatActivity() {
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
-
 
         cpViewModel.destination.observe(this) { icao ->
             if (!icao.isNullOrBlank()) {
@@ -80,14 +68,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-
-        locationRequest = LocationRequest.Builder(1000L)
+        acRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
             .setMaxUpdateDelayMillis(4000L)
             .build()
 
-        locationCallback = object : LocationCallback() {
+        acCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 if (skipFirstFix) {
                     skipFirstFix = false
@@ -102,26 +89,8 @@ class MainActivity : AppCompatActivity() {
                         val bearing = location.bearing
 
                         val trueHeading = currentTrueHeading
-
-                        val geoField = GeomagneticField(
-                            lat.toFloat(),
-                            lon.toFloat(),
-                            altitude.toFloat(),
-                            System.currentTimeMillis()
-                        )
-                        val magneticHeading = (trueHeading - geoField.declination + 360) % 360
-
-                        val courseToDest = selectedDestinationLatLon?.let { (destLat, destLon) ->
-                            computeCourseToDestination(
-                                currentLat = lat,
-                                currentLon = lon,
-                                destLat = destLat,
-                                destLon = destLon
-                            )
-                        } ?: 0f
-
                         withContext(Dispatchers.Main) {
-                            cpViewModel.updateLocationData(Coordinates(lat, lon), speedMs, altitude, bearing, trueHeading, magneticHeading, courseToDest)
+                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, bearing, trueHeading,)
                         }
                     }
                 }
@@ -162,28 +131,15 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        fusedLocationClient.removeLocationUpdates(acCallback)
         sensorManager.unregisterListener(sensorListener)
     }
 
     private fun setupToolbarObservers() {
-        cpViewModel.locationState.observe(this) { state: LocationState ->
-            Log.d("MainActivity", "LocationState: $state")
-            val track = state.bearing
-            val destination = knownAirports.find { it.icao == selectedIcao }?.name.orEmpty()
-
+        cpViewModel.acState.observe(this) { state ->
+            Log.d("MainActivity", "ACState: $state")
             binding.appBarMain.composeCockpitView.setContent {
-                CockPit(track = track, trueHeading = state.trueHeading,
-                    magneticHeading = state.magneticHeading,
-                    speed = state.speed,
-                    altitude = state.altitude.toFloat(),
-                    verticalSpeed = state.verticalSpeed,
-                    flightPhase = state.flightPhase,
-                    northUpMode= false, course = state.courseToDest,
-                    destination = destination,
-                    rtcoordinates =  state.coordinates,
-                    destcoordinates = state.coordinates,
-                )
+                CockPit(cpViewModel)
             }
         }
     }
@@ -212,10 +168,9 @@ class MainActivity : AppCompatActivity() {
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                 SensorManager.getOrientation(rotationMatrix, orientationAngles)
                 val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
-                val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
+                //val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
+                //val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
                 currentTrueHeading = (azimuth + 360) % 360
-                homeViewModel.updateDeviceHeading(pitch, bank, currentTrueHeading)
             }
         }
 
@@ -226,8 +181,8 @@ class MainActivity : AppCompatActivity() {
         try {
             if (checkPermission()) {
                 fusedLocationClient.requestLocationUpdates(
-                    locationRequest,
-                    locationCallback,
+                    acRequest,
+                    acCallback,
                     Looper.getMainLooper()
                 )
             } else {
@@ -238,24 +193,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun computeCourseToDestination(
-        currentLat: Double,
-        currentLon: Double,
-        destLat: Double,
-        destLon: Double
-    ): Float {
-        val lat1Rad = Math.toRadians(currentLat)
-        val lat2Rad = Math.toRadians(destLat)
-        val deltaLonRad = Math.toRadians(destLon - currentLon)
-
-        val y = sin(deltaLonRad) * cos(lat2Rad)
-        val x = cos(lat1Rad) * sin(lat2Rad) -
-                sin(lat1Rad) * cos(lat2Rad) * cos(deltaLonRad)
-        val initialBearingRad = atan2(y, x)
-
-        val bearingDeg = (Math.toDegrees(initialBearingRad) + 360) % 360
-        return bearingDeg.toFloat()
-    }
 
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>, grantResults: IntArray

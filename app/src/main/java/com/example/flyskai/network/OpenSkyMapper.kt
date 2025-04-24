@@ -1,12 +1,12 @@
 // OpenSkyMapper.kt
 package com.example.flyskai.network
 
-import model.AircraftState
+import model.AircraftStateIcao
 
-fun mapToAircraftStates(states: List<List<Any>>): List<AircraftState> {
+fun mapToAircraftStates(states: List<List<Any>>): List<AircraftStateIcao> {
     return states.mapNotNull { state ->
         try {
-            AircraftState(
+            AircraftStateIcao(
                 icao24 = state[0] as String,
                 callsign = state[1] as? String,
                 originCountry = state[2] as String,

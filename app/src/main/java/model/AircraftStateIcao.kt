@@ -1,6 +1,6 @@
 package model
 
-data class AircraftState(
+data class AircraftStateIcao(
     val icao24: String,
     val callsign: String?,
     val originCountry: String,

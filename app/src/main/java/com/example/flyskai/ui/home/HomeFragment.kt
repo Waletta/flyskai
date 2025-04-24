@@ -1,6 +1,7 @@
 package com.example.flyskai.ui.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,6 +10,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.example.flyskai.AppSettings
 import com.example.flyskai.R
 import com.example.flyskai.databinding.FragmentHomeBinding
@@ -22,23 +24,20 @@ import com.mapbox.maps.plugin.annotation.AnnotationConfig
 import com.mapbox.maps.plugin.annotation.annotations
 import com.mapbox.maps.plugin.annotation.generated.*
 import com.mapbox.maps.plugin.locationcomponent.location
+import kotlinx.coroutines.launch
 import model.knownAirports
+import kotlin.math.abs
+
 
 class HomeFragment : Fragment() {
-
-
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
     private lateinit var mapView: MapView
     private var cameraCentered = false
     private var lastKnownLocation: Point? = null
-
     private lateinit var pointAnnotationManager: PointAnnotationManager
-
     private val airportNames = knownAirports.map { it.name }.toTypedArray()
     private val cpFlightViewModel: CockPitViewModel by activityViewModels()
-    private var isSeated = false
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,6 +53,24 @@ class HomeFragment : Fragment() {
         mapView = MapView(requireContext())
         binding.mapContainer.addView(mapView)
         initMap()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            cpFlightViewModel.destination.observe(viewLifecycleOwner) { destination ->
+                val icon = if (destination.isNullOrBlank()) {
+                    R.drawable.baseline_connecting_airports_24
+                } else {
+                    R.drawable.baseline_airline_seat_recline_extra_24
+                }
+                binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
+                    .setIcon(icon)
+                if (::pointAnnotationManager.isInitialized) {
+                    updateDestinationAnnotation(destination.orEmpty())
+                } else {
+                    Log.d("HomeFragment", "pointAnnotationManager not initialized, skipping annotation update")
+                }
+            }
+        }
+
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_ai -> {
@@ -61,28 +78,7 @@ class HomeFragment : Fragment() {
                     true
                 }
                 R.id.navigation_onboard -> {
-                    val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
-                    if (isSeated) {
-                        unseat()
-                    }
-                    else {
-                        val builder = android.app.AlertDialog.Builder(requireContext())
-                        builder.setTitle("Select your destination")
-                        builder.setItems(airportNames) { _, which ->
-                            val selectedAirport = knownAirports[which]
-                            cpFlightViewModel.setDestination(selectedAirport.icao)
-                            Toast.makeText(
-                                requireContext(),
-                                "Destination set: ${selectedAirport.name}\nLet’s fly this bird!",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            isSeated = true
-                        }
-
-                        menuItem.setIcon(R.drawable.baseline_airline_seat_recline_extra_24)
-                        builder.setCancelable(true)
-                        builder.show()
-                    }
+                    showDestinationDialog()
                     true
                 }
                 R.id.navigation_center -> {
@@ -104,6 +100,105 @@ class HomeFragment : Fragment() {
         return binding.root
     }
 
+    private fun showDestinationDialog() {
+        val builder = android.app.AlertDialog.Builder(requireContext())
+        builder.setTitle("Select Destination")
+
+        // Add "Clear Destination" option if a destination is set
+        val currentDestination = cpFlightViewModel.destination.value.orEmpty()
+        val options = if (currentDestination.isNotBlank()) {
+            arrayOf("Clear Destination") + airportNames
+        } else {
+            airportNames
+        }
+
+        builder.setItems(options) { _, which ->
+            if (currentDestination.isNotBlank() && which == 0) {
+                cpFlightViewModel.setDestination("")
+                binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
+                    .setIcon(R.drawable.baseline_connecting_airports_24)
+                Toast.makeText(
+                    requireContext(),
+                    "Destination cleared.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                // Set new destination
+                val selectedIndex = if (currentDestination.isNotBlank()) which - 1 else which
+                val selectedAirport = knownAirports[selectedIndex]
+                cpFlightViewModel.setDestination(selectedAirport.icao)
+                binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
+                    .setIcon(R.drawable.baseline_airline_seat_recline_extra_24)
+                Toast.makeText(
+                    requireContext(),
+                    "Destination set: ${selectedAirport.name}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        builder.setNegativeButton("Cancel", null)
+        builder.setCancelable(true)
+        builder.show()
+    }
+
+    private fun updateDestinationAnnotation(icao: String) {
+        pointAnnotationManager.deleteAll()
+        if (icao.isNotBlank()) {
+            val airport = knownAirports.find { it.icao.equals(icao, ignoreCase = true) } ?: return
+            val point = Point.fromLngLat(airport.lon, airport.lat)
+            val drawable = AppCompatResources.getDrawable(requireContext(), R.drawable.ic_airport)
+            val bitmap = drawable?.toBitmap() ?: return
+
+            val options = PointAnnotationOptions()
+                .withPoint(point)
+                .withIconImage(bitmap)
+                .withTextField(airport.name)
+                .withTextOffset(listOf(0.0, 1.5))
+                .withTextSize(12.0)
+            pointAnnotationManager.create(options)
+
+
+            lastKnownLocation?.let { currentLocation ->
+                // Calculate bounding box
+                val minLat = minOf(currentLocation.latitude(), point.latitude())
+                val maxLat = maxOf(currentLocation.latitude(), point.latitude())
+                val minLon = minOf(currentLocation.longitude(), point.longitude())
+                val maxLon = maxOf(currentLocation.longitude(), point.longitude())
+
+                // Calculate center of the bounding box
+                val centerLat = (minLat + maxLat) / 2.0
+                val centerLon = (minLon + maxLon) / 2.0
+                val centerPoint = Point.fromLngLat(centerLon, centerLat)
+
+                // Estimate zoom level based on distance
+                val latDelta = abs(maxLat - minLat)
+                val lonDelta = abs(maxLon - minLon)
+                val maxDelta = maxOf(latDelta, lonDelta) // Use the larger delta to ensure both points fit
+
+                // Approximate zoom level (adjust these values based on your map's viewport)
+                val zoomLevel = when {
+                    maxDelta > 20.0 -> 2.0  // Very far (e.g., intercontinental)
+                    maxDelta > 10.0 -> 4.0  // Far (e.g., across a country)
+                    maxDelta > 5.0 -> 6.0   // Regional
+                    maxDelta > 2.0 -> 8.0   // Local
+                    maxDelta > 0.5 -> 10.0  // Close
+                    else -> 12.0            // Very close
+                }
+
+                // Apply padding (reduce zoom slightly to add margin)
+                val paddedZoom = zoomLevel - 0.5
+                // Center map on destination
+                mapView.mapboxMap.easeTo(
+                    CameraOptions.Builder()
+                        .center(centerPoint)
+                        .zoom(paddedZoom)
+                        .build()
+                )
+            }
+
+        }
+    }
     private fun showAIDownloadDialog() {
         val builder = android.app.AlertDialog.Builder(requireContext())
             .setTitle("Enable AI Assistant?")
@@ -136,13 +231,6 @@ class HomeFragment : Fragment() {
         dialog.show()
     }
 
-    private fun unseat() {
-        val menuItem = binding.bottomNavigation.menu.findItem(R.id.navigation_onboard)
-        cpFlightViewModel.setDestination("")
-        isSeated = false
-        menuItem.setIcon(R.drawable.baseline_connecting_airports_24)
-        Toast.makeText(requireContext(), "You’ve unseated. Ready to reset destination.", Toast.LENGTH_SHORT).show()
-    }
 
     private fun initMap() {
         val mapboxMap = mapView.mapboxMap
@@ -153,6 +241,11 @@ class HomeFragment : Fragment() {
             }
             val annotationApi = mapView.annotations
             pointAnnotationManager = annotationApi.createPointAnnotationManager(AnnotationConfig())
+            val currentDestination = cpFlightViewModel.destination.value.orEmpty()
+
+            if (currentDestination.isNotBlank()) {
+                updateDestinationAnnotation(currentDestination)
+            }
 
 
             mapView.location.addOnIndicatorPositionChangedListener { point ->
@@ -185,7 +278,6 @@ class HomeFragment : Fragment() {
     // OpenSky Basic Starts here
     private fun fetchNearbyFlights() {
         val location = lastKnownLocation ?: return
-
         val minLat = location.latitude() - 0.5
         val maxLat = location.latitude() + 0.5
         val minLon = location.longitude() - 0.5
