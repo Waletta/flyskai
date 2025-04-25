@@ -2,6 +2,7 @@ package com.example.flyskai
 
 import android.Manifest
 import com.example.flyskai.ui.components.CockPit
+import com.example.flyskai.ui.components.ChatScreen
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -14,8 +15,12 @@ import android.view.Menu
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
@@ -32,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import model.Coordinates
 import model.knownAirports
+import model.knownLLMConfigurations
 
 class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -48,8 +54,11 @@ class MainActivity : AppCompatActivity() {
     private var selectedDestinationLatLon: Pair<Double, Double>? = null
     private var selectedIcao: String? = null
     private var currentTrueHeading: Float = 0f
-
     private var skipFirstFix = false
+
+    private var deviceRollAngle: Float = 0f // Track device roll for orientation detection
+    private val _orientationState = MutableLiveData<Boolean>(false) // Track landscape/portrait
+    val orientationState: LiveData<Boolean> get() = _orientationState
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +99,7 @@ class MainActivity : AppCompatActivity() {
 
                         val trueHeading = currentTrueHeading
                         withContext(Dispatchers.Main) {
-                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, bearing, trueHeading,)
+                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, bearing, trueHeading)
                         }
                     }
                 }
@@ -136,12 +145,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupToolbarObservers() {
-        cpViewModel.acState.observe(this) { state ->
-            Log.d("MainActivity", "ACState: $state")
+        // Observe both acState and orientationState to ensure UI updates on orientation change
+        orientationState.observe(this) { isLandscape ->
+            Log.d("MainActivity", "OrientationState: isLandscape=$isLandscape, deviceRollAngle=$deviceRollAngle")
             binding.appBarMain.composeCockpitView.setContent {
-                CockPit(cpViewModel)
+                if (isLandscape) {
+                    Log.d("MainActivity", "Device in landscape, loading ChatScreen")
+                    val llmConfig = knownLLMConfigurations.find { it.modelId == "PHI3" }
+                    Log.d("MainActivity", "Phi-3 config: $llmConfig")
+                    ChatScreen(
+                        llmConfig = llmConfig,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Log.d("MainActivity", "Device in portrait or face-up, loading CockPit")
+                    CockPit(cpViewModel)
+                }
             }
         }
+        cpViewModel.acState.observe(this) { state ->
+            Log.d("MainActivity", "ACState: $state")
+            // Trigger orientation update to ensure UI reflects current state
+            _orientationState.value = isLandscape()
+        }
+    }
+
+    private fun isLandscape(): Boolean {
+        // Device tilted horizontally (landscape) when tilt angle is near ±90 degrees
+        return deviceRollAngle in 60f..120f || deviceRollAngle in -120f..-60f
     }
     private fun checkPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(
@@ -168,13 +199,16 @@ class MainActivity : AppCompatActivity() {
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                 SensorManager.getOrientation(rotationMatrix, orientationAngles)
                 val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                //val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()   // pitch (nose up/down)
-                //val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
+                val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()                //val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()    // roll (bank)
                 currentTrueHeading = (azimuth + 360) % 360
+                val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
+                Log.d("MainActivity", "Sensor update - pitch: $pitch, roll: $roll")
+                deviceRollAngle = roll
+
             }
         }
 
-        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
     private fun startLocationUpdates() {
