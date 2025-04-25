@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -26,7 +27,6 @@ import com.example.flyskai.ui.shared.AltitudeUnit
 import kotlin.math.abs
 import androidx.core.graphics.toColorInt
 import model.Coordinates
-import model.knownAirports
 import java.lang.Math.toRadians
 import kotlin.math.atan2
 import kotlin.math.pow
@@ -35,26 +35,29 @@ import kotlin.math.sqrt
 import com.example.flyskai.ui.shared.CockPitViewModel
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.asFlow
 import com.example.flyskai.ui.shared.SpeedUnit
+import model.Airport
 
 @Composable
 fun CockPit(cpVm: CockPitViewModel
     ) {
 
-    val acState by cpVm.acState.asFlow().collectAsStateWithLifecycle(null)
-    val destination by cpVm.destination.asFlow().collectAsStateWithLifecycle("") // Observe destination
-    val course = acState?.courseToDest
+    val acState by cpVm.acState.collectAsStateWithLifecycle()
 
-    val pitch = acState?.pitch ?: 0f
-    val bank = acState?.bank ?: 0f
-    val speed = acState?.speed ?: 0f
-    val track = acState?.bearing ?: 0f
-    val trueHeading = acState?.trueHeading ?: 0f
-    val magneticHeading = acState?.magneticHeading ?: 0f
-    val altitude = acState?.altitude?.toFloat() ?: 0f
-    val verticalSpeed = acState?.verticalSpeed ?: 0f
-    val rtcoordinates = acState?.coordinates
+    val destAirport by cpVm.destinationAirport.collectAsState()
+    //val destName = destAirport?.name.orEmpty()
+
+    val course = acState.courseToDest
+
+    val pitch = acState.pitch
+    val bank = acState.bank
+    val speed = acState.speed
+    val track = acState.bearing
+    val trueHeading = acState.trueHeading
+    val magneticHeading = acState.magneticHeading
+    val altitude = acState.altitude.toFloat()
+    val verticalSpeed = acState.verticalSpeed
+    val rtcoordinates = acState.coordinates
 
     val drift = ((track - trueHeading + 360) % 360).let {
         if (it > 180) it - 360 else it
@@ -73,7 +76,6 @@ fun CockPit(cpVm: CockPitViewModel
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Speed Tape
             SpeedAltitudeTape(
                 value = speedUnit,
                 label = AppSettings.speedUnit.toString(),
@@ -93,8 +95,8 @@ fun CockPit(cpVm: CockPitViewModel
                     bank = bank,
                     drift = drift,
                     verticalSpeed = verticalSpeed,
-                    course = course?.toFloat(),
-                    destination = destination.toString(),
+                    course = course.toFloat(),
+                    destinationAirport = destAirport,
                     coordinates = rtcoordinates,
                 )
             }
@@ -120,7 +122,7 @@ fun HeadingTrackCompass(
     drift: Float,
     verticalSpeed: Float,
     course: Float?,
-    destination: String = "",
+    destinationAirport: Airport? = null,
     coordinates: Coordinates?
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -215,7 +217,7 @@ fun HeadingTrackCompass(
         }
 
         // COURSE TO DESTINATION ARROW
-        if(destination.isNotBlank()){
+        if(destinationAirport != null){
             rotate(course?.toFloat() ?: 0f, pivot = center) {
                 drawLine(
                     color = Color(0xFFFFA500),
@@ -306,11 +308,10 @@ fun HeadingTrackCompass(
             )
 
             // DESTINATION
-            if(destination.isNotBlank()){
+            if(destinationAirport != null){
                 labelPaint.color = "#FFA500".toColorInt()
-                val destinationAirport = knownAirports.find { it.icao.equals(destination, ignoreCase = true) }
-                val airportName = destinationAirport?.name ?: destination.uppercase()
-                val distanceKm = if (destinationAirport != null && coordinates != null) {
+                val airportName = destinationAirport.name
+                val distanceKm = if (coordinates != null) {
                     haversine(coordinates.latitude, coordinates.longitude, destinationAirport.lat, destinationAirport.lon)
                 } else {
                     0.0

@@ -14,7 +14,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,28 +23,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.asFlow
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.flyskai.R
 import com.example.flyskai.ui.shared.AppSettings
-import com.example.flyskai.ui.shared.CockPitViewModel
 import model.knownAirports
+import model.Airport
+
 
 @Composable
-internal fun NavigationBar(
-    viewModel: CockPitViewModel,
+internal fun NavBar(
+    destAirport: Airport?,
     navController: NavController,
     currentDestination: NavDestination?,
     onDestinationClick: () -> Unit,
     onCenterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val destination by viewModel.destination.asFlow().collectAsStateWithLifecycle("")
 
     NavigationBar(modifier = modifier) {
         listOf(
@@ -54,7 +50,7 @@ internal fun NavigationBar(
             Triple("unit", R.drawable.baseline_conveyor_belt_24, "Unit")
         ).forEach { (route, iconRes, _) -> // Note: Ignore the label parameter
             val selected = currentDestination?.hierarchy?.any { it.route == route } == true
-            val icon = if (route == "onboard" && destination?.isNotBlank() == true) {
+            val icon = if (route == "onboard" && destAirport != null) {
                 R.drawable.baseline_airline_seat_recline_extra_24
             } else {
                 iconRes
@@ -87,15 +83,6 @@ internal fun NavigationBar(
 
                         "unit" -> {
                             AppSettings.toggleUnitSystem()
-                            Toast.makeText(context, "Unit system toggled", Toast.LENGTH_SHORT)
-                                .show()
-                            navController.navigate(route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
                         }
                     }
                 }
@@ -106,12 +93,13 @@ internal fun NavigationBar(
 
 @Composable
 fun DestinationDialog(
-    viewModel: CockPitViewModel,
+    current: Airport?,
+    onSelect: (icao: String) -> Unit,
+    onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val destination by viewModel.destination.asFlow().collectAsStateWithLifecycle("")
     val airportNames = knownAirports.map { it.name }.toTypedArray()
-    val options = if (destination?.isNotBlank() == true) {
+    val options = if (current != null) {
         arrayOf("Clear Destination") + airportNames
     } else {
         airportNames
@@ -139,14 +127,15 @@ fun DestinationDialog(
                 options.forEachIndexed { index, option ->
                     TextButton(
                         onClick = {
-                            if (destination?.isNotBlank() == true && index == 0) {
-                                viewModel.setDestination("")
+                            if (current != null && index == 0) {
+                                onClear()
                                 Toast.makeText(context, "Destination cleared.", Toast.LENGTH_SHORT).show()
                             } else {
-                                val selectedIndex = if (destination?.isNotBlank() == true) index - 1 else index
-                                val selectedAirport = knownAirports[selectedIndex]
-                                viewModel.setDestination(selectedAirport.icao)
-                                Toast.makeText(context, "Destination set: ${selectedAirport.name}", Toast.LENGTH_LONG).show()
+                                val trueIndex = (if (current != null) index - 1 else index)
+                                    .coerceIn(0, knownAirports.lastIndex)
+                                val picked = knownAirports[trueIndex]
+                                onSelect(knownAirports[trueIndex].icao)
+                                Toast.makeText(context, "Destination set: ${picked.name}", Toast.LENGTH_LONG).show()
                             }
                             onDismiss()
                         },

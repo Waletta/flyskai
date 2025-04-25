@@ -1,7 +1,6 @@
 package model
 
 data class Airport(val icao: String, val name: String, val lat: Double, val lon: Double)
-data class FlightPosition(val icao24: String, val callsign: String?, val lat: Double, val lon: Double)
 
 val knownAirports = listOf(
     Airport("LIBR", "Brindisi", 40.65696, 17.94532),
@@ -16,59 +15,42 @@ val knownAirports = listOf(
     Airport("LINY", "NY JFK", 40.64634739968817, -73.78349034554053),
 )
 
-enum class FlightPhase {
-    IDLE,              // Engines off, parked
-    PUSHBACK,          // Aircraft pushed from gate
-    TAXI,              // Moving on ground
-    HOLD_SHORT,        // Holding before runway
-    TAKEOFF_ROLL,      // Accelerating on runway
-    ROTATION,          // Nose lifts off
-    INITIAL_CLIMB,     // First phase after takeoff
-    CLIMB,             // Climbing to cruise altitude
-    CRUISE,            // Stable level flight
-    DESCENT,           // Descending from cruise
-    APPROACH,          // Configured for landing
-    FINAL_APPROACH,    // Aligned with runway
-    LANDING_FLARE,     // Nose up just before touchdown
-    TOUCHDOWN,         // Main gear contact
-    ROLL_OUT,          // Decelerating on runway
-    EXIT_RUNWAY,       // Taxiway transition
-    TAXI_TO_GATE,      // Post-landing taxi
-    PARKED             // Engines off at gate
-}
 
 data class AircraftStateData(
-    val coordinates: Coordinates,           // Latitude and longitude
-    val altitude: Double,                   // Height above sea level
-    val speed: Float,                       // Ground or airspeed
-    val bearing: Float,                     // Direction of movement relative to ground
-    val verticalSpeed: Float = 0f,          // Rate of climb or descent
-    val pitch: Float = 0f,                  // Nose angle relative to horizon
-    val bank: Float = 0f,                   // Wing angle relative to horizon (degrees, positive for right wing down)
-    val trueHeading: Float = 0f,            // Direction aircraft is pointing (true north)
-    val magneticHeading: Float = 0f,        // Direction aircraft is pointing (magnetic north)
-    val courseToDest: Float = 0f,           // Direction to destination
-    val destinationAirport: Airport? = null, // Destination airport, nullable for no destination
+    val coordinates: Coordinates = Coordinates(0.0, 0.0),  // Latitude and longitude
+    val altitude: Double = 0.0,                            // Height above sea level
+    val speed: Float = 0f,                                 // Ground or airspeed
+    val bearing: Float = 0f,                               // Direction of movement relative to ground
+    val verticalSpeed: Float = 0f,                         // Rate of climb or descent
+    val pitch: Float = 0f,                                 // Nose angle relative to horizon
+    val bank: Float = 0f,                                  // Wing angle relative to horizon (degrees, positive for right wing down)
+    val trueHeading: Float = 0f,                           // Direction aircraft is pointing (true north)
+    val magneticHeading: Float = 0f,                       // Direction aircraft is pointing (magnetic north)
+    val courseToDest: Float = 0f,                          // Direction to destination
+    val destinationAirport: Airport? = null                // Optional destination airport data
 ) {
     companion object {
-        fun Coordinates(latitude: Double, longitude: Double): Coordinates {
-            return Coordinates(latitude, longitude)
+        fun currentCoordinates(latitude: Double, longitude: Double): Coordinates =
+            Coordinates(latitude, longitude)
+
+        fun destinationCoordinates(airport: Airport?): Coordinates =
+            airport?.let { Coordinates(it.lat, it.lon) }
+                ?: Coordinates(0.0, 0.0)
+
+        fun destinationAirportName(airport: Airport?): String =
+            airport?.name ?: ""
         }
+
+        val nowCoordinates: Coordinates
+            get() = currentCoordinates(coordinates.latitude, coordinates.longitude)
+
+        val destCoordinates: Coordinates
+            get() = destinationCoordinates(destinationAirport)
+        val destAirportName: String
+            get() = destinationAirportName(destinationAirport)
     }
-}
 
 data class Coordinates(
     val latitude: Double = 0.00,
     val longitude: Double = 0.00,
-)
-
-data class AircraftStateIcao(
-    val icao24: String,
-    val callsign: String?,
-    val originCountry: String,
-    val longitude: Double?,
-    val latitude: Double?,
-    val baroAltitude: Double?,
-    val velocity: Double?,
-    val heading: Double?
 )

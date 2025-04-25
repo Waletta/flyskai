@@ -17,12 +17,12 @@ fun MainScreen(
     viewModel: CockPitViewModel,
     isLandscape: Boolean,
 ) {
+    val destAirport by viewModel.destinationAirport.collectAsState()
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     var showDestinationDialog by remember { mutableStateOf(false) }
-    var triggerCenterMap by remember { mutableStateOf(false) }
-
+    var recenterToggle by remember { mutableStateOf(false) }
 
     if (isLandscape) {
         val llmConfig = knownLLMConfigurations.find { it.modelId == "PHI3" }
@@ -44,12 +44,12 @@ fun MainScreen(
     } else {
             Scaffold(
                 bottomBar = {
-                    NavigationBar(
-                        viewModel = viewModel,
+                    NavBar(
+                        destAirport = destAirport,
                         navController = navController,
                         currentDestination = currentDestination,
                         onDestinationClick = { showDestinationDialog = true },
-                        onCenterClick = { triggerCenterMap = true }
+                        onCenterClick = { recenterToggle = !recenterToggle }
                     )
                 }
             ) { innerPadding ->
@@ -66,7 +66,7 @@ fun MainScreen(
                             CockPit(
                                 cpVm = viewModel,
                             )
-                            MapboxMap()
+                            MapboxMap( destIcao = destAirport?.icao, recenterRequest = recenterToggle)
                         }
                     }
                     composable("center") {
@@ -89,7 +89,15 @@ fun MainScreen(
 
         if (showDestinationDialog) {
             DestinationDialog(
-                viewModel = viewModel,
+                current = destAirport,
+                onSelect = { airportIcao ->
+                    viewModel.setDestinationByIcao(airportIcao)
+                    showDestinationDialog = false
+                },
+                onClear = {
+                    viewModel.setDestinationByIcao("")
+                    showDestinationDialog = false
+                },
                 onDismiss = { showDestinationDialog = false }
             )
         }

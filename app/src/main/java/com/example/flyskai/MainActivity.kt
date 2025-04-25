@@ -59,15 +59,6 @@ class MainActivity : AppCompatActivity() {
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
-        cpViewModel.destination.observe(this) { icao ->
-            if (!icao.isNullOrBlank()) {
-                val airport = knownAirports.find { it.icao == icao }
-                if (airport != null) {
-                    selectedDestinationLatLon = Pair(airport.lat, airport.lon)
-                    selectedIcao = icao
-                }
-            }
-        }
 
         acRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
