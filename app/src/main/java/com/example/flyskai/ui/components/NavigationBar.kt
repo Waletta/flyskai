@@ -129,13 +129,13 @@ fun DestinationDialog(
                         onClick = {
                             if (current != null && index == 0) {
                                 onClear()
-                                Toast.makeText(context, "Destination cleared.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Destination cleared. Cross-Checked", Toast.LENGTH_LONG).show()
                             } else {
                                 val trueIndex = (if (current != null) index - 1 else index)
                                     .coerceIn(0, knownAirports.lastIndex)
                                 val picked = knownAirports[trueIndex]
                                 onSelect(knownAirports[trueIndex].icao)
-                                Toast.makeText(context, "Destination set: ${picked.name}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Destination set: ${picked.name}. Cross-checked", Toast.LENGTH_LONG).show()
                             }
                             onDismiss()
                         },

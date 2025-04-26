@@ -45,10 +45,7 @@ fun CockPit(cpVm: CockPitViewModel
     val acState by cpVm.acState.collectAsStateWithLifecycle()
 
     val destAirport by cpVm.destinationAirport.collectAsState()
-    //val destName = destAirport?.name.orEmpty()
-
     val course = acState.courseToDest
-
     val pitch = acState.pitch
     val bank = acState.bank
     val speed = acState.speed
@@ -80,7 +77,8 @@ fun CockPit(cpVm: CockPitViewModel
                 value = speedUnit,
                 label = AppSettings.speedUnit.toString(),
                 tapeRange = 5,
-                highlightColor = Color.Magenta
+                highlightColor = Color.Magenta,
+                digits = 3,
             )
 
             // Compass Rose
@@ -228,8 +226,6 @@ fun HeadingTrackCompass(
             }
         }
 
-
-
         // AIRCRAFT SYMBOL - Rotate for north-up mode
         rotate(magneticHeading, pivot = center) {
             val triangleSize = 30f
@@ -295,7 +291,7 @@ fun HeadingTrackCompass(
 
             // VSI (Left Bottom)
             val vsi = formatVerticalSpeed(verticalSpeed)
-            val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "ft/min" else "m/min"
+            val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "fpm" else "mpm"
             val paddedVsi = String.format(Locale.US,"%04d", abs(vsi))
             val signedVsi = if (vsi >= 0) "+$paddedVsi" else "-$paddedVsi"
             val formattedVsi = "VSI   $signedVsi $vsiLabel"
@@ -402,15 +398,18 @@ fun SpeedAltitudeTape(
     value: Int,
     label: String,
     tapeRange: Int,
-    highlightColor: Color
+    highlightColor: Color,
+    digits: Int = 4
 ) {
+    val formatString = "%0${digits}d" // dynamically create the format string
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
     ) {
         for (i in tapeRange downTo 1) {
             val v = value - i * 10
-            val text = if (v >= 0) "%04d".format(v) else "    "
+            val text = if (v >= 0) formatString.format(v) else " ".repeat(digits)
             Text(
                 text = text,
                 color = Color.LightGray,
@@ -425,7 +424,7 @@ fun SpeedAltitudeTape(
                 .padding(4.dp)
         ) {
             Text(
-                text = "%04d %s".format(value, label),
+                text = "${formatString.format(value)} $label",
                 color = Color.Black,
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp,
@@ -435,7 +434,7 @@ fun SpeedAltitudeTape(
 
         for (i in 1..tapeRange) {
             val v = value + i * 10
-            val text = if (v >= 0) "%04d".format(v) else "    "
+            val text = if (v >= 0) formatString.format(v) else " ".repeat(digits)
             Text(
                 text = text,
                 color = Color.LightGray,
@@ -445,4 +444,3 @@ fun SpeedAltitudeTape(
         }
     }
 }
-

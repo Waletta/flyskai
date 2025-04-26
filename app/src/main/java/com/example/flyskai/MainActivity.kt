@@ -3,19 +3,22 @@ package com.example.flyskai
 import android.Manifest
 import com.example.flyskai.ui.components.MainScreen
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.Menu
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.flyskai.databinding.ActivityMainBinding
 import com.example.flyskai.ui.shared.CockPitViewModel
 import com.google.android.gms.location.LocationCallback
@@ -25,12 +28,9 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import model.Coordinates
-import model.knownAirports
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -43,22 +43,17 @@ class MainActivity : AppCompatActivity() {
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
     private val cpViewModel: CockPitViewModel by viewModels()
-    private var selectedDestinationLatLon: Pair<Double, Double>? = null
-    private var selectedIcao: String? = null
     private var currentTrueHeading: Float = 0f
     private var skipFirstFix = false
 
-    private var deviceRollAngle: Float = 0f // Track device roll for orientation detection
-    private val _orientationState = MutableStateFlow(false)
-    val orientationState: StateFlow<Boolean> get() = _orientationState
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
             ?: throw IllegalStateException("Rotation Vector Sensor not available")
-
 
         acRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
@@ -92,8 +87,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.mainComposeView.setContent {
-            val isLandscapeState = orientationState.collectAsStateWithLifecycle(initialValue = false)
-            val isLandscape = isLandscapeState.value
+            val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
             MainScreen(
                 viewModel = cpViewModel,
                 isLandscape = isLandscape,
@@ -105,21 +99,17 @@ class MainActivity : AppCompatActivity() {
         } else {
             requestPermission()
         }
-        savedInstanceState?.let {
-            deviceRollAngle = it.getFloat("deviceRollAngle", 0f)
-            _orientationState.value = isLandscape()
-        }
+
     }
 
-    private fun isLandscape(): Boolean {
-        return deviceRollAngle in 60f..120f || deviceRollAngle in -120f..-60f
-    }
+
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         return true
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onResume() {
         super.onResume()
         sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
@@ -127,6 +117,7 @@ class MainActivity : AppCompatActivity() {
         if (checkPermission()) {
             startLocationUpdates()
         }
+
     }
 
     override fun onPause() {
@@ -159,11 +150,7 @@ class MainActivity : AppCompatActivity() {
                 val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
                 val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
                 Log.d("MainActivity", "Sensor update - pitch: $pitch, roll: $roll")
-                deviceRollAngle = roll
                 currentTrueHeading = (azimuth + 360) % 360
-                val newLandscape = isLandscape()
-                Log.d("MainActivity", "Updating orientationState: $newLandscape")
-                _orientationState.value = newLandscape
             }
         }
 

@@ -35,10 +35,6 @@ fun MainScreen(
         } else {
             ChatScreen(
                 llmConfig = llmConfig,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
             )
         }
     } else {

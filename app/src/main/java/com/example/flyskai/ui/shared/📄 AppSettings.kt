@@ -5,10 +5,8 @@ import androidx.compose.runtime.MutableState
 
 enum class UnitSystem {
     METRIC, IMPERIAL;
-
     fun toggle(): UnitSystem = if (this == METRIC) IMPERIAL else METRIC
 }
-
 object AppSettings {
     val unitSystem: MutableState<UnitSystem> = mutableStateOf(UnitSystem.IMPERIAL)
 

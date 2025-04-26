@@ -32,47 +32,73 @@ fun calculateCourseToDestination(
     return ((Math.toDegrees(initialBearingRad) + 360) % 360).toFloat()
 }
 
-fun calculateDistanceNm(
-    from: Coordinates,
-    toAirport: Airport?
-): Float {
-    if (toAirport == null) return 0f
-
+fun smartDistance(
+    fromLat: Double,
+    fromLon: Double,
+    toLat: Double,
+    toLon: Double,
+    unit: UnitSystem = UnitSystem.METRIC
+): Double {
     val earthRadiusMeters = 6_371_000.0
 
-    val lat1Rad       = toRadians(from.latitude)
-    val lat2Rad       = toRadians(toAirport.lat)
-    val deltaLatRad   = toRadians(toAirport.lat - from.latitude)
-    val deltaLonRad   = toRadians(toAirport.lon - from.longitude)
+    val deltaLat = toRadians(toLat - fromLat)
+    val deltaLon = toRadians(toLon - fromLon)
 
-    val havA = sin(deltaLatRad / 2).pow(2) +
-            cos(lat1Rad) * cos(lat2Rad) * sin(deltaLonRad / 2).pow(2)
-    val angularDistance = 2 * atan2(sqrt(havA), sqrt(1 - havA))
+    val avgLat = toRadians((fromLat + toLat) / 2.0)
+    val cosAvgLat = cos(avgLat)
 
-    val distanceMeters = earthRadiusMeters * angularDistance
-    val distanceNm     = distanceMeters / 1852.0
+    val x = deltaLon * cosAvgLat
+    val y = deltaLat
+    val flatDistanceRad = sqrt(x * x + y * y)
 
-    return distanceNm.toFloat()
+    return if (flatDistanceRad < 0.01) { // 0.01 rad ≈ 60 km
+        val distanceMeters = flatDistanceRad * earthRadiusMeters
+        convertDistance(distanceMeters, unit)
+    } else {
+        val lat1Rad = toRadians(fromLat)
+        val lat2Rad = toRadians(toLat)
+
+        val havA = sin(deltaLat / 2).pow(2) +
+                cos(lat1Rad) * cos(lat2Rad) * sin(deltaLon / 2).pow(2)
+        val angularDistance = 2 * atan2(sqrt(havA), sqrt(1 - havA))
+
+        val distanceMeters = earthRadiusMeters * angularDistance
+        convertDistance(distanceMeters, unit)
+    }
 }
 
-class VsiSmoother(private val maxBufferSize: Int = 10) {
-    private val buffer = mutableListOf<Float>()
+
+private fun convertDistance(distanceMeters: Double, unit: UnitSystem): Double {
+    return when (unit) {
+        UnitSystem.METRIC -> distanceMeters / 1000.0
+        UnitSystem.IMPERIAL -> distanceMeters / 1852.0
+    }
+}
+
+// Warmup up 6 secs before calc of EMA
+class VsiSmoother(private val alpha: Float = 0.2f, private val warmupMillis: Long = 6000L) {
+    private var ema: Float = 0f
+    private var startTime: Long = System.currentTimeMillis()
+
     fun smooth(rawVerticalSpeed: Float): Float {
-        buffer.add(rawVerticalSpeed)
-        if (buffer.size > maxBufferSize) buffer.removeAt(0)
-        return buffer.average().toFloat()
+        val currentTime = System.currentTimeMillis()
+        val elapsed = currentTime - startTime
+
+        return if (elapsed < warmupMillis) {
+            0f // During warm-up period: always return 0
+        } else {
+            ema = alpha * rawVerticalSpeed + (1 - alpha) * ema
+            ema
+        }
     }
 }
 
 class CockPitViewModel : ViewModel() {
-
     private val _destinationAirport = MutableStateFlow<Airport?>(null)
     val destinationAirport: StateFlow<Airport?> = _destinationAirport.asStateFlow()
-
     private val _acState = MutableStateFlow(AircraftStateData())
     val acState: StateFlow<AircraftStateData> = _acState.asStateFlow()
-    private val vsiSmoother = VsiSmoother(maxBufferSize = 10)
-
+    private val vsiSmoother = VsiSmoother(alpha = 0.2f)
     private var lastAltitude = 0.0
     private var lastTime = System.currentTimeMillis()
 
