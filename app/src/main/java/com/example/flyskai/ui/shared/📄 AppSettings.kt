@@ -16,9 +16,26 @@ object AppSettings {
     val altitudeUnit: AltitudeUnit
         get() = if (unitSystem.value == UnitSystem.METRIC) AltitudeUnit.METERS else AltitudeUnit.FEET
 
+    val vsiUnit: VSIUnit
+        get() = if (unitSystem.value == UnitSystem.METRIC) VSIUnit.MPM else VSIUnit.FPM
+
+    val distanceUnit: DistanceUnit
+        get() = if (unitSystem.value == UnitSystem.METRIC) DistanceUnit.KM else DistanceUnit.NM
+
+
     fun toggleUnitSystem() {
         unitSystem.value = unitSystem.value.toggle()
     }
+}
+
+enum class DistanceUnit {
+    KM, NM;
+    override fun toString() = if (this == KM) "km" else "nm"
+}
+
+enum class VSIUnit {
+    MPM, FPM;
+    override fun toString() = if (this == MPM) "m/min" else "ft/min"
 }
 
 enum class SpeedUnit {

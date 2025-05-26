@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -13,7 +16,12 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,12 +63,11 @@ internal fun NavBar(
             } else {
                 iconRes
             }
-
             NavigationBarItem(
                 icon = {
                     Icon(
                         painter = painterResource(id = icon),
-                        contentDescription = route // Use route for accessibility
+                        contentDescription = route
                     )
                 },
                 selected = selected,
@@ -85,7 +92,8 @@ internal fun NavBar(
                             AppSettings.toggleUnitSystem()
                         }
                     }
-                }
+                },
+
             )
         }
     }
@@ -98,7 +106,10 @@ fun DestinationDialog(
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val airportNames = knownAirports.map { it.name }.toTypedArray()
+    val sortedAirports = knownAirports.sortedBy { it.name }
+    var searchText by remember { mutableStateOf("") }
+
+    val airportNames = sortedAirports.map { it.name }.toTypedArray()
     val options = if (current != null) {
         arrayOf("Clear Destination") + airportNames
     } else {
@@ -111,11 +122,16 @@ fun DestinationDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(16.dp),
             color = Color.Black
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
                 Text(
                     text = "Select Destination",
@@ -124,29 +140,47 @@ fun DestinationDialog(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                options.forEachIndexed { index, option ->
-                    TextButton(
-                        onClick = {
-                            if (current != null && index == 0) {
-                                onClear()
-                                Toast.makeText(context, "Destination cleared. Cross-Checked", Toast.LENGTH_LONG).show()
-                            } else {
-                                val trueIndex = (if (current != null) index - 1 else index)
-                                    .coerceIn(0, knownAirports.lastIndex)
-                                val picked = knownAirports[trueIndex]
-                                onSelect(knownAirports[trueIndex].icao)
-                                Toast.makeText(context, "Destination set: ${picked.name}. Cross-checked", Toast.LENGTH_LONG).show()
-                            }
-                            onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = option,
-                            color = Color.White,
-                            textAlign = TextAlign.Start,
+
+                // 🔥 Search field
+                TextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    placeholder = { Text("Search Airport...") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f) // important: allow scrolling inside available space
+                        .fillMaxWidth()
+                ) {
+                    itemsIndexed(options) { index, option ->
+                        TextButton(
+                            onClick = {
+                                if (current != null && index == 0) {
+                                    onClear()
+                                    Toast.makeText(context, "Destination cleared. Cross-Checked", Toast.LENGTH_LONG).show()
+                                } else {
+                                    val trueIndex = (if (current != null) index - 1 else index)
+                                        .coerceIn(0, sortedAirports.lastIndex)
+                                    val picked = sortedAirports[trueIndex]
+                                    onSelect(picked.icao)
+                                    Toast.makeText(context, "Destination set: ${picked.name}. Cross-checked", Toast.LENGTH_LONG).show()
+                                }
+                                onDismiss()
+                            },
                             modifier = Modifier.fillMaxWidth()
-                        )
+                        ) {
+                            Text(
+                                text = option,
+                                color = Color.White,
+                                textAlign = TextAlign.Start,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
 

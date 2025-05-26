@@ -5,96 +5,108 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.flyskai.ui.shared.CockPitViewModel
 import model.knownLLMConfigurations
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 
 @Composable
 fun MainScreen(
     viewModel: CockPitViewModel,
     isLandscape: Boolean,
 ) {
+    if (isLandscape) {
+        LandscapeChatScreen()
+    } else {
+        PortraitMainScreen(viewModel = viewModel)
+    }
+}
+
+@Composable
+private fun PortraitMainScreen(viewModel: CockPitViewModel) {
     val destAirport by viewModel.destinationAirport.collectAsState()
+    val showDestinationDialog by viewModel.showDestinationDialog.collectAsState()
+    val recenterToggle by viewModel.recenterToggle.collectAsState()
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    var showDestinationDialog by remember { mutableStateOf(false) }
-    var recenterToggle by remember { mutableStateOf(false) }
 
-    if (isLandscape) {
-        val llmConfig = knownLLMConfigurations.find { it.modelId == "PHI3" }
-        if (llmConfig == null) {
-            Text(
-                text = "Phi-3 configuration not found",
-                modifier = Modifier.fillMaxSize(),
-                textAlign = TextAlign.Center
-            )
-        } else {
-            ChatScreen(
-                llmConfig = llmConfig,
+    Scaffold(
+        bottomBar = {
+            NavBar(
+                destAirport = destAirport,
+                navController = navController,
+                currentDestination = currentDestination,
+                onDestinationClick = viewModel::onDestinationClick,
+                onCenterClick = viewModel::onRecenterClick
             )
         }
-    } else {
-            Scaffold(
-                bottomBar = {
-                    NavBar(
-                        destAirport = destAirport,
-                        navController = navController,
-                        currentDestination = currentDestination,
-                        onDestinationClick = { showDestinationDialog = true },
-                        onCenterClick = { recenterToggle = !recenterToggle }
-                    )
-                }
-            ) { innerPadding ->
-                NavHost(
-                    navController = navController,
-                    startDestination = "onboard",
-                    modifier = Modifier.padding(innerPadding)
-                ) {
-                    composable("onboard") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                        ) {
-                            CockPit(
-                                cpVm = viewModel,
-                            )
-                            MapboxMap( destIcao = destAirport?.icao, recenterRequest = recenterToggle)
-                        }
-                    }
-                    composable("center") {
-                        Text(
-                            text = "Center Screen",
-                            modifier = Modifier.fillMaxSize(),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    composable("unit") {
-                        Text(
-                            text = "Unit Screen",
-                            modifier = Modifier.fillMaxSize(),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+    ) { innerPadding ->
+        AppNavHost(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding),
+            viewModel = viewModel,
+            recenterToggle = recenterToggle,
+            destIcao = destAirport?.icao // Pass the ICAO string directly
+        )
+    }
+
+    if (showDestinationDialog) {
+        DestinationDialog(
+            current = destAirport,
+            onSelect = viewModel::onDestinationSelected,
+            onClear = viewModel::onClearDestination,
+            onDismiss = viewModel::onDismissDestinationDialog
+        )
+    }
+}
+
+
+@Composable
+private fun AppNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    viewModel: CockPitViewModel,
+    recenterToggle: Boolean,
+    destIcao: String?
+) {
+    NavHost(
+        navController = navController,
+        startDestination = "onboard",
+        modifier = modifier
+    ) {
+        composable("onboard") {
+            // The parent Column needs to fill the available space
+            // for the weights of its children to be calculated correctly.
+            Column(modifier = Modifier.fillMaxSize()) {
+                CockPit(
+                    cpVm = viewModel,
+                )
+                MapboxMap(
+                    destIcao = destIcao,
+                    recenterRequest = recenterToggle,
+                    // 2. Assign 60% of the vertical space to the Map.
+                )
             }
         }
-
-        if (showDestinationDialog) {
-            DestinationDialog(
-                current = destAirport,
-                onSelect = { airportIcao ->
-                    viewModel.setDestinationByIcao(airportIcao)
-                    showDestinationDialog = false
-                },
-                onClear = {
-                    viewModel.setDestinationByIcao("")
-                    showDestinationDialog = false
-                },
-                onDismiss = { showDestinationDialog = false }
-            )
-        }
+        // ... other composable routes
     }
+}
+
+@Composable
+private fun LandscapeChatScreen() {
+    val llmConfig = knownLLMConfigurations.find { it.modelId == "PHI3" }
+    if (llmConfig == null) {
+        Text(
+            text = "Phi-3 configuration not found",
+            modifier = Modifier.fillMaxSize(),
+            textAlign = TextAlign.Center
+        )
+    } else {
+        // Assuming ChatScreen is a composable you have defined elsewhere
+        // ChatScreen(llmConfig = llmConfig)
+    }
+}

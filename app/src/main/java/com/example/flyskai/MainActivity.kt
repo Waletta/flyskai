@@ -32,6 +32,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import model.Coordinates
 
+
+
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val fusedLocationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
@@ -46,6 +48,8 @@ class MainActivity : AppCompatActivity() {
     private var currentTrueHeading: Float = 0f
     private var skipFirstFix = false
 
+    private var latestPitch: Float = 0f
+    private var latestRoll: Float = 0f
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,21 +78,19 @@ class MainActivity : AppCompatActivity() {
                         val speedMs = location.speed
                         val altitude = location.altitude
                         val bearing = location.bearing
-
                         val trueHeading = currentTrueHeading
                         withContext(Dispatchers.Main) {
-                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, bearing, trueHeading)
+                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, bearing, trueHeading, latestPitch, latestRoll)
                         }
                     }
                 }
             }
         }
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.mainComposeView.setContent {
             val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-            MainScreen(
+                MainScreen(
                 viewModel = cpViewModel,
                 isLandscape = isLandscape,
             )
@@ -151,6 +153,9 @@ class MainActivity : AppCompatActivity() {
                 val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
                 Log.d("MainActivity", "Sensor update - pitch: $pitch, roll: $roll")
                 currentTrueHeading = (azimuth + 360) % 360
+
+                latestPitch = pitch
+                latestRoll = roll
             }
         }
 

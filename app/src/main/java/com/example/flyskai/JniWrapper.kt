@@ -3,28 +3,20 @@ package com.example.flyskai
 import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
 
 class JniWrapper {
 
     private val tag: String? = this::class.simpleName
-//    private val threadLocalState: ThreadLocal<State> = ThreadLocal.withInitial { State.Idle }
 
     private val runLoop: CoroutineDispatcher = Executors.newSingleThreadExecutor {
         thread(start = false, name = "Llm-RunLoop") {
             Log.d(tag, "Dedicated thread for native code: ${Thread.currentThread().name}")
-
-            // No-op if called more than once.
-            System.loadLibrary("llama-android")
-
-            // Set llama log handler to Android
+            System.loadLibrary("fs-android")
             log_to_android()
             backend_init(false)
-
             Log.d(tag, system_info())
-
             it.run()
         }.apply {
             uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, exception: Throwable ->
@@ -32,7 +24,6 @@ class JniWrapper {
             }
         }
     }.asCoroutineDispatcher()
-
 
     private external fun log_to_android()
     private external fun load_model(filename: String): Long

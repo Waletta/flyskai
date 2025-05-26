@@ -19,6 +19,7 @@ import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
+import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.animation.easeTo
 import com.mapbox.maps.plugin.annotation.annotations
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
@@ -43,16 +44,19 @@ fun MapboxMap(
 
     AndroidView(
         factory = { ctx ->
-            MapView(ctx).also { view ->
-                mapView = view
-                view.mapboxMap.loadStyle(Style.MAPBOX_STREETS) {
-                    view.location.updateSettings {
+            MapView(ctx).apply {
+                mapboxMap.loadStyle(Style.MAPBOX_STREETS) {
+                    location.updateSettings {
                         enabled = true
                         pulsingEnabled = true
                     }
                 }
                 // create the annotation manager
-                pointAnnotationManager = view.annotations.createPointAnnotationManager()
+                pointAnnotationManager = annotations.createPointAnnotationManager()
+                location.addOnIndicatorPositionChangedListener { point ->
+                    lastKnownLocation = point
+                }
+                mapView = this
 
             }
         },
@@ -63,10 +67,10 @@ fun MapboxMap(
         val listener = OnIndicatorPositionChangedListener { point ->
             lastKnownLocation = point
             if (!cameraCentered) {
-                mapView?.mapboxMap?.easeTo(
+                mapView?.camera?.easeTo(
                     CameraOptions.Builder()
                         .center(point)
-                        .zoom(14.0)
+                        .zoom(12.0)
                         .build()
                 )
                 cameraCentered = true
@@ -79,7 +83,6 @@ fun MapboxMap(
             mapView?.location?.removeOnIndicatorPositionChangedListener(listener)
         }
     }
-
 
     LaunchedEffect(recenterRequest) {
         if (recenterRequest) {

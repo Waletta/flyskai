@@ -75,21 +75,56 @@ private fun convertDistance(distanceMeters: Double, unit: UnitSystem): Double {
     }
 }
 
+
+class ValueSmoother(
+    private val alpha: Float = 0.1f,
+    private val deadband: Float = 0.2f // degrees
+) {
+    private var smoothedValue: Float = 0f
+    private var initialized = false
+
+    fun smooth(input: Float): Float {
+        val filtered = if (kotlin.math.abs(input - smoothedValue) < deadband) {
+            smoothedValue // ignore tiny changes
+        } else {
+            input
+        }
+
+        smoothedValue = if (initialized) {
+            alpha * filtered + (1 - alpha) * smoothedValue
+        } else {
+            initialized = true
+            filtered
+        }
+
+        return smoothedValue
+    }
+}
+
+
 // Warmup up 6 secs before calc of EMA
-class VsiSmoother(private val alpha: Float = 0.2f, private val warmupMillis: Long = 6000L) {
+class VsiSmoother(
+    private val alpha: Float = 0.05f,
+    private val warmupMillis: Long = 6000L,
+    private val deadband: Float = 0.5f // m/s
+) {
     private var ema: Float = 0f
     private var startTime: Long = System.currentTimeMillis()
+    private val buffer = ArrayDeque<Float>(5)
 
     fun smooth(rawVerticalSpeed: Float): Float {
         val currentTime = System.currentTimeMillis()
         val elapsed = currentTime - startTime
+        if (elapsed < warmupMillis) return 0f
 
-        return if (elapsed < warmupMillis) {
-            0f // During warm-up period: always return 0
-        } else {
-            ema = alpha * rawVerticalSpeed + (1 - alpha) * ema
-            ema
-        }
+        if (buffer.size == 5) buffer.removeFirst()
+        buffer.addLast(rawVerticalSpeed)
+
+        val median = buffer.sorted()[buffer.size / 2]
+        val filtered = if (kotlin.math.abs(median) < deadband) 0f else median
+
+        ema = alpha * filtered + (1 - alpha) * ema
+        return ema
     }
 }
 
@@ -99,6 +134,18 @@ class CockPitViewModel : ViewModel() {
     private val _acState = MutableStateFlow(AircraftStateData())
     val acState: StateFlow<AircraftStateData> = _acState.asStateFlow()
     private val vsiSmoother = VsiSmoother(alpha = 0.2f)
+    private val pitchSmoother = ValueSmoother(alpha = 0.1f, deadband = 0.2f)
+    private val bankSmoother = ValueSmoother(alpha = 0.1f, deadband = 0.2f)
+
+
+    // --- Add New UI State ---
+    private val _showDestinationDialog = MutableStateFlow(false)
+    val showDestinationDialog: StateFlow<Boolean> = _showDestinationDialog.asStateFlow()
+
+    private val _recenterToggle = MutableStateFlow(false)
+    val recenterToggle: StateFlow<Boolean> = _recenterToggle.asStateFlow()
+
+
     private var lastAltitude = 0.0
     private var lastTime = System.currentTimeMillis()
 
@@ -107,6 +154,32 @@ class CockPitViewModel : ViewModel() {
     private var destLatRad: Double = 0.0
     private var destLonRad: Double = 0.0
     private var destCosLat: Double = 1.0
+
+
+    // --- Add New Event Handlers for UI ---
+    fun onDestinationClick() {
+        _showDestinationDialog.value = true
+    }
+
+    fun onRecenterClick() {
+        // A toggle is often better handled as a one-time event
+        // but if it's a persistent state, this is fine.
+        _recenterToggle.value = !_recenterToggle.value
+    }
+
+    fun onDestinationSelected(icao: String) {
+        setDestinationByIcao(icao)
+        _showDestinationDialog.value = false
+    }
+
+    fun onClearDestination() {
+        setDestinationByIcao("")
+        _showDestinationDialog.value = false
+    }
+
+    fun onDismissDestinationDialog() {
+        _showDestinationDialog.value = false
+    }
 
     /** Call this when the user selects a new ICAO. */
     fun setDestinationByIcao(icao: String) {
@@ -125,6 +198,9 @@ class CockPitViewModel : ViewModel() {
         }
     }
 
+
+
+
     /**
      * Updates the aircraft's location and derived data.
      * @param coordinates The current GPS coordinates (latitude, longitude).
@@ -134,13 +210,16 @@ class CockPitViewModel : ViewModel() {
      * @param trueHeading The true heading in degrees relative to true north.
      */
     fun updateACData(coordinates: Coordinates, altitude: Double, speed: Float, bearing: Float,
-                           trueHeading: Float,
+                           trueHeading: Float, pitch: Float, bank: Float,
                            ) {
         val currentTime = System.currentTimeMillis()
         val deltaTimeSec = (currentTime - lastTime) / 1000.0
         val deltaAlt = altitude - lastAltitude
         val rawVerticalSpeed = if (deltaTimeSec > 0.001) (deltaAlt / deltaTimeSec).toFloat() else 0f
         val smoothedVerticalSpeed = vsiSmoother.smooth(rawVerticalSpeed)
+        val smoothedPitch = pitchSmoother.smooth(pitch.coerceIn(-90f, 90f))
+        val smoothedBank  = bankSmoother.smooth(bank.coerceIn(-180f, 180f))
+
 
         val geoField = GeomagneticField(
             coordinates.latitude.toFloat(),
@@ -163,8 +242,8 @@ class CockPitViewModel : ViewModel() {
             speed = speed,
             bearing = bearing,
             verticalSpeed=smoothedVerticalSpeed,
-            pitch= 0f,
-            bank= 0f,
+            pitch= smoothedPitch.coerceIn(-30f, 30f),
+            bank=smoothedBank.coerceIn(-90f, 90f),
             trueHeading = trueHeading,
             magneticHeading = magneticHeading,
             courseToDest = computedCourseToDest,
