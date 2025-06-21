@@ -4,6 +4,7 @@ import android.Manifest
 import com.example.flyskai.ui.components.MainScreen
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Looper
@@ -38,10 +39,11 @@ class MainActivity : AppCompatActivity() {
     private val cpViewModel: CockPitViewModel by viewModels()
     private var skipFirstFix = false
 
+
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sensorHandler = SensorHandler(applicationContext, cpViewModel)
+        sensorHandler = SensorHandler(getSystemService(SENSOR_SERVICE) as SensorManager)
 
         acRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
@@ -62,8 +64,11 @@ class MainActivity : AppCompatActivity() {
                         val speedMs = location.speed
                         val altitude = location.altitude
                         val courseOverGround = location.bearing
-                         withContext(Dispatchers.Main) {
-                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, courseOverGround)
+                        val magneticHeading = sensorHandler.currentMagneticHeading.get()
+                        val pitch = sensorHandler.latestPitch.get()
+                        val roll = sensorHandler.latestRoll.get()
+                        withContext(Dispatchers.Main) {
+                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, courseOverGround, magneticHeading, pitch, roll)
                         }
                     }
                 }
@@ -73,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.mainComposeView.setContent {
             val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-                MainScreen(
+            MainScreen(
                 viewModel = cpViewModel,
                 isLandscape = isLandscape,
             )
@@ -98,20 +103,11 @@ class MainActivity : AppCompatActivity() {
         sensorHandler.startListening(
             onOrientationChanged = { azimuth, pitch, roll ->
             },
-            onRawMagneticFieldChangedCallback = { x, y, z ->
+            onMagneticFieldChangedCallback = { x, y, z ->
                 cpViewModel.updateRawMagneticField(x, y, z)
             },
-            onRawAccelerometerChangedCallback = { x, y, z ->
-                // This callback receives RAW accelerometer data from SensorHandler.
-                // It then passes this RAW data to the ViewModel for magnetic dip calculation.
+            onAccelerometerChangedCallback = { x, y, z ->
                 cpViewModel.updateRawAccelerometerData(x, y, z)
-            },
-            // --- FIX: Add onRawRotationVectorChangedCallback ---
-            // This is crucial for the ViewModel's preferred dip angle calculation.
-            onRawRotationVectorChangedCallback = { x, y, z, w ->
-                // This callback receives RAW rotation vector data from SensorHandler.
-                // It then passes this RAW data to the ViewModel for magnetic dip calculation.
-                cpViewModel.updateRotationVector(x, y, z, w)
             }
         )
         skipFirstFix = true
