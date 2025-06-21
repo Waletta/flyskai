@@ -356,17 +356,13 @@
             destAirport: Airport? = null
         ): Float {
 
-            val actualDestAirport = destAirport ?: _destinationAirport.value ?: return 0f.also {
-                android.util.Log.w("CockPitViewModel", "No destination airport set")
-            }
+            val actualDestAirport = destAirport ?: _destinationAirport.value ?: return 0f
 
             if (currentLat !in -90.0..90.0 || currentLon !in -180.0..180.0 ||
                 actualDestAirport.lat !in -90.0..90.0 || actualDestAirport.lon !in -180.0..180.0) {
-                android.util.Log.w("CockPitViewModel", "Invalid coordinates: current=($currentLat, $currentLon), dest=(${actualDestAirport.lat}, ${actualDestAirport.lon})")
                 return 0f
             }
 
-            android.util.Log.d("CockPitViewModel", "Calculating rhumb line course from ($currentLat, $currentLon) to ${actualDestAirport.name} (${actualDestAirport.icao}, ${actualDestAirport.lat}, ${actualDestAirport.lon})")
 
             val lat1Rad = Math.toRadians(currentLat)
             val lon1Rad = Math.toRadians(currentLon)
@@ -374,30 +370,21 @@
             val lon2Rad = Math.toRadians(actualDestAirport.lon)
 
             var deltaLon = lon2Rad - lon1Rad
-
-            // Adjust deltaLon for crossing the anti-meridian
             if (deltaLon > PI) deltaLon -= 2 * PI
             if (deltaLon < -PI) deltaLon += 2 * PI
 
             val deltaPsi = ln(tan(PI / 4 + lat2Rad / 2) / tan(PI / 4 + lat1Rad / 2))
 
-            // Handle the case where deltaPsi is effectively zero (e.g., traveling East/West along a parallel)
-            if (kotlin.math.abs(deltaPsi) < 1e-9) { // Using a small epsilon to check for near-zero
-                if (deltaLon > 0) return 90f // East
-                if (deltaLon < 0) return 270f // West
-                return 0f // Same longitude, effectively no movement or at same point
+            if (kotlin.math.abs(deltaPsi) < 1e-9) {
+                if (deltaLon > 0) return 90f
+                if (deltaLon < 0) return 270f
+                return 0f
             }
 
             var bearingRad = atan2(deltaLon, deltaPsi)
             var bearingDeg = Math.toDegrees(bearingRad)
-
-            // Normalize to 0-360 degrees
             bearingDeg = (bearingDeg + 360) % 360
-
-            android.util.Log.d("CockPitViewModel", "Raw rhumb line course to ${actualDestAirport.name}: $bearingDeg°")
-            return bearingDeg.toFloat().also {
-                android.util.Log.d("CockPitViewModel", "Final rhumb line course returned to ${actualDestAirport.name}: $it°")
-            }
+            return bearingDeg.toFloat()
         }
 
         private fun calculateETA(

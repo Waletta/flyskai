@@ -6,6 +6,9 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.atan2
+import kotlin.math.sqrt
+
 
 class SensorHandler(private val sensorManager: SensorManager) {
     private val rotationSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
@@ -30,31 +33,34 @@ class SensorHandler(private val sensorManager: SensorManager) {
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
             when (event?.sensor?.type) {
-                Sensor.TYPE_ROTATION_VECTOR -> {
-                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-                    SensorManager.getOrientation(rotationMatrix, orientationAngles)
-                    val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                    val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
-                    val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
-                    val trueHeading = (azimuth + 360) % 360
-                    currentMagneticHeading.set(trueHeading)
-                    latestPitch.set(pitch)
-                    latestRoll.set(roll)
-                    onOrientationChanged?.invoke(trueHeading, pitch, roll)
-                    Log.d("SensorHandler", "Orientation - azimuth: $trueHeading, pitch: $pitch, roll: $roll")
-                }
+//                Sensor.TYPE_ROTATION_VECTOR -> {
+//                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+//                    SensorManager.getOrientation(rotationMatrix, orientationAngles)
+//                    //onOrientationChanged?.invoke(trueHeading, pitch, roll)
+//                    //Log.d("SensorHandler", "Orientation - azimuth: $trueHeading, pitch: $pitch, roll: $roll")
+//                }
                 Sensor.TYPE_MAGNETIC_FIELD -> {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
                     onMagneticFieldChanged?.invoke(x, y, z)
-                    // Optional: Log for debugging
-                    // Log.d("SensorHandler", "Magnetic Field - X: $x µT, Y: $y µT, Z: $z µT")
+                    //Log.d("SensorHandler", "Magnetic Field - X: $x µT, Y: $y µT, Z: $z µT")
                 }
+
                 Sensor.TYPE_ACCELEROMETER -> {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
+
+                    val pitchRadians = atan2(y, sqrt(x * x + z * z))
+                    val pitch = Math.toDegrees(pitchRadians.toDouble()).toFloat()
+                    latestPitch.set(-pitch)
+
+                    val azimuth = Math.toDegrees(x.toDouble()).toFloat()
+                    val roll = Math.toDegrees(z.toDouble()).toFloat()
+                    val trueHeading = (azimuth + 360) % 360
+                    currentMagneticHeading.set(trueHeading)
+                    latestRoll.set(roll)
                     onAccelerometerChanged?.invoke(x, y, z)
                 }
             }
