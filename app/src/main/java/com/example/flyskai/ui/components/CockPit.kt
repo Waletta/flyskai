@@ -82,6 +82,11 @@ fun CockPit(cpVm: CockPitViewModel,
     }
     var distanceToDestination by remember { mutableStateOf(0.0) }
 
+
+    val isPitchCalibrating by cpVm.isPitchCalibrating.collectAsStateWithLifecycle()
+    val isBankCalibrating by cpVm.isBankCalibrating.collectAsStateWithLifecycle()
+
+
     LaunchedEffect(rtcoordinates, destAirport) {
         distanceToDestination = if (destAirport != null) {
             haversine(
@@ -148,6 +153,8 @@ fun CockPit(cpVm: CockPitViewModel,
                             magneticDipAngle = magneticDipAngle,
                             course = course,
                             destinationAirport = destAirport,
+                            isPitchCalibrating = isPitchCalibrating,
+                            isBankCalibrating = isBankCalibrating
                         )
                     }
 
@@ -240,11 +247,12 @@ fun HeadingTrackCompass(
     magneticDipAngle: Float,
     course: Float?,
     destinationAirport: Airport?,
+    isPitchCalibrating: Boolean,
+    isBankCalibrating: Boolean
 ) {
 
     val tapeColor = Color(0xFF303030)
     val driftAlpha = if (drift != null) 1f else 0.3f
-
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = tapeColor)
@@ -260,8 +268,7 @@ fun HeadingTrackCompass(
             letterSpacing = 0f
         }
 
-        val pitchOffset = pitch * -3
-
+        val pitchOffset = pitch * -7
         // ARTIFICIAL HORIZON BACKGROUND
         drawRect(
             color = Color(0xFF87CEEB), // Sky
@@ -282,6 +289,8 @@ fun HeadingTrackCompass(
 
         // Pitch ladders
         val pixelsPerDegree = 7f
+        val zoomFactor = 0.1f
+
         for (pitchAngle in -30..30 step 5) {
             if (pitchAngle == 0) continue
             val yOffset = -pitchAngle * pixelsPerDegree
@@ -323,7 +332,6 @@ fun HeadingTrackCompass(
                 }
             }
         }
-
 
             // COMPASS ROSE
             for (angle in 0 until 360 step 3) {
@@ -378,10 +386,10 @@ fun HeadingTrackCompass(
         }
 
         // COURSE TO DESTINATION
-        if (destinationAirport != null) { // Only draw course arrow if there's a destination and course
-            rotate(course ?: 0f, pivot = center) { // Use course directly, provide default if null
+        if (destinationAirport != null) {
+            rotate(course ?: 0f, pivot = center) {
                 drawLine(
-                    color = Color(0xFFFFA500), // Orange
+                    color = Color(0xFFFFA500),
                     start = center,
                     end = Offset(center.x, center.y - radius),
                     strokeWidth = 6f
@@ -432,8 +440,6 @@ fun HeadingTrackCompass(
             )
         }
 
-
-        // Drift is wrong !!
         drawContext.canvas.nativeCanvas.apply {
             val verticalStart = center.y + radius + 60f
             val rightX = center.x + radius - 200f
@@ -448,9 +454,9 @@ fun HeadingTrackCompass(
                 "DRIFT ---"
             }
 
-            labelPaint.color = android.graphics.Color.RED
+            labelPaint.color = Color(0xFF2196F3).toArgb()
             drawText(driftLabel, 8f, verticalStart, labelPaint)
-            labelPaint.alpha = 255 // Reset alpha
+            labelPaint.alpha = 255
             val vsi = formatVSI(verticalSpeed)
             val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "fpm" else "mpm"
             val paddedVsi = String.format(Locale.US,"%04d", abs(vsi))
@@ -470,14 +476,29 @@ fun HeadingTrackCompass(
 
 
             labelPaint.color = android.graphics.Color.WHITE
+            val bankText = if (isBankCalibrating) "Calibrating..." else String.format(Locale.US, "BA %03.0f°", bank)
             drawText(
-                String.format(Locale.US, "BA %03.0f°", bank),
+                bankText,
                 rightX,
                 verticalStart,
                 labelPaint
             )
+            val pitchDisplayColor: Int
+            val pitchText: String
+            if (isPitchCalibrating) {
+                pitchText = "Calibrating..."
+                pitchDisplayColor = android.graphics.Color.WHITE
+            } else {
+                pitchText = String.format(Locale.US, "Pitch %03.0f°", -pitch)
+                pitchDisplayColor = when {
+                    -pitch >=  20f || -pitch <= -10f -> android.graphics.Color.RED
+                    -pitch >=  10f || -pitch <= -6f -> "#FFA500".toColorInt()
+                    else -> android.graphics.Color.WHITE
+                }
+            }
+            labelPaint.color = pitchDisplayColor
             drawText(
-                String.format(Locale.US, "Pitch %03.0f°", -pitch),
+                pitchText,
                 rightX,
                 verticalStart + 36f, // Offset by 36f to place below BA label
                 labelPaint
