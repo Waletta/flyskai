@@ -169,42 +169,49 @@ fun DestinationInfoBar(
     eta: Long?,
     modifier: Modifier = Modifier
 ) {
-    val labelPaint = android.graphics.Paint().apply {
-        textAlign = android.graphics.Paint.Align.LEFT
-        isFakeBoldText = true
-        textSize = 34f // Match the size of other labels for consistency
-        typeface = Typeface.MONOSPACE
-        letterSpacing = 0f
+    val density = LocalDensity.current
+    val textPxSize = remember(density) { with(density) { 10.sp.toPx() } }
+
+    val labelPaintOrange = remember {
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.LEFT
+            isFakeBoldText = true
+            textSize = textPxSize
+            typeface = Typeface.MONOSPACE
+            letterSpacing = 0f
+            color = "#FFA500".toColorInt() // Orange color
+        }
     }
-    val textPxSize = with(LocalDensity.current) { 10.sp.toPx() }
+
+    val labelPaintWhiteRight = remember {
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.WHITE
+            textAlign = android.graphics.Paint.Align.RIGHT
+            textSize = textPxSize
+            isFakeBoldText = true // Ensure consistency if other paints have it
+            typeface = Typeface.MONOSPACE // Ensure consistency
+            letterSpacing = 0f // Ensure consistency
+        }
+    }
+
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (destinationAirport != null) {
-            val airportName = destinationAirport.name
-            val distance = formatDistance(distanceToDestination)
-            val distanceStr =
-                String.format(Locale.US, "%.0f %s", distance, AppSettings.distanceUnit.toString())
 
-            val destinationLabel = "DST  ${airportName.uppercase()}  $distanceStr"
-            Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
-                drawContext.canvas.nativeCanvas.apply {
-                    labelPaint.color = "#FFA500".toColorInt() // Orange color
-                    labelPaint.textSize = textPxSize
-                    drawText(destinationLabel, 0f, textPxSize, labelPaint)
-                }
-            }
+        val airportName = destinationAirport?.name
+        val distance = formatDistance(distanceToDestination)
+        val distanceStr = String.format(Locale.US, "%.0f %s", distance, AppSettings.distanceUnit.toString())
+        val destinationLabel = if (airportName != null) {
+            "DST  ${airportName.uppercase()}  $distanceStr"
         } else {
-            Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
-                drawContext.canvas.nativeCanvas.apply {
-                    labelPaint.color = "#FFA500".toColorInt() // Orange color
-                    labelPaint.textSize = textPxSize
-                    drawText("DST  ---", 0f, textPxSize, labelPaint)
-                }
-            }
+            "DST  ---"
+        }
+
+        Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
+            drawContext.canvas.nativeCanvas.drawText(destinationLabel, 0f, textPxSize, labelPaintOrange)
         }
 
         val etaStr = eta?.let {
@@ -216,12 +223,7 @@ fun DestinationInfoBar(
         val etaLabel = "ETA  $etaStr"
 
         Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
-            drawContext.canvas.nativeCanvas.apply {
-                labelPaint.color = android.graphics.Color.WHITE
-                labelPaint.textSize = textPxSize
-                labelPaint.textAlign = android.graphics.Paint.Align.RIGHT // Align ETA to the right
-                drawText(etaLabel, size.width, textPxSize, labelPaint)
-            }
+            drawContext.canvas.nativeCanvas.drawText(etaLabel, size.width, textPxSize, labelPaintWhiteRight)
         }
     }
 }
@@ -242,6 +244,7 @@ fun HeadingTrackCompass(
 
     val tapeColor = Color(0xFF303030)
     val driftAlpha = if (drift != null) 1f else 0.3f
+
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = tapeColor)

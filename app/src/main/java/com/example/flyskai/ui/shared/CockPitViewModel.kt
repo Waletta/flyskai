@@ -31,7 +31,6 @@ private object Constants {
     const val LANDING_PHASE_EXTRA_TIME_MS = 15 * 60 * 1000L
 }
 
-
 private fun calculateFlatDistance(x: Double, y: Double, unit: UnitSystem): Double {
     val distanceMeters = sqrt(x.pow(2) + y.pow(2)) * Constants.EARTH_RADIUS_METERS
     return when (unit) {
@@ -39,7 +38,6 @@ private fun calculateFlatDistance(x: Double, y: Double, unit: UnitSystem): Doubl
         UnitSystem.IMPERIAL -> distanceMeters / 1852.0
     }
 }
-
 
 private fun calculateHaversineDistance(
     fromLat: Double,
@@ -82,65 +80,40 @@ private fun smartDistance(
     }
 }
 
-
-class ValueSmoother(
-    private val alpha: Float = 0.1f,
-    private val deadband: Float = 0.2f
-) {
-    private var smoothedValue: Float = 0f
-    private var initialized = false
-
+class ValueSmoother(private val alpha: Float = 0.1f, private val deadband: Float = 0.2f) {
+    private var smoothedValue: Float = 0f; private var initialized = false
     fun smooth(input: Float): Float {
-        val filtered = if (kotlin.math.abs(input - smoothedValue) < deadband) {
-            smoothedValue
-        } else {
-            input
-        }
-        smoothedValue = if (initialized) {
-            alpha * filtered + (1 - alpha) * smoothedValue
-        } else {
-            initialized = true
-            filtered
-        }
+        val filtered = if (kotlin.math.abs(input - smoothedValue) < deadband) { smoothedValue } else { input }
+        smoothedValue = if (initialized) { alpha * filtered + (1 - alpha) * smoothedValue } else { initialized = true; filtered }
         return smoothedValue
     }
 }
 
-class VsiSmoother(
-    private val alpha: Float = 0.05f,
-    private val warmupMillis: Long = 6000L,
-    private val deadband: Float = 0.5f
-) {
-    private var ema: Float = 0f
-    private var startTime: Long = System.currentTimeMillis()
-    private val buffer = ArrayDeque<Float>(5)
-
+class VsiSmoother(private val alpha: Float = 0.02f, private val warmupMillis: Long = 10000L, private val deadband: Float = 30f, private val medianBufferSize: Int = 15) {
+    private var ema: Float = 0f; private var startTime: Long = System.currentTimeMillis(); private val buffer = ArrayDeque<Float>(medianBufferSize)
     fun smooth(rawVerticalSpeed: Float): Float {
-        val currentTime = System.currentTimeMillis()
-        val elapsed = currentTime - startTime
-        if (elapsed < warmupMillis) return 0f
-
-        if (buffer.size == 5) buffer.removeFirst()
+        val currentTime = System.currentTimeMillis(); val elapsed = currentTime - startTime
+        if (elapsed < warmupMillis) { ema = 0f; buffer.clear(); return 0f }
+        if (buffer.size == medianBufferSize) { buffer.removeFirst() }
         buffer.addLast(rawVerticalSpeed)
-        val median = buffer.sorted()[buffer.size / 2]
+        if (buffer.size < medianBufferSize / 2) { return ema }
+        val sortedBuffer = buffer.sorted(); val median = sortedBuffer[sortedBuffer.size / 2]
         val filtered = if (kotlin.math.abs(median) < deadband) 0f else median
-        ema = alpha * filtered + (1 - alpha) * ema
-        return ema
+        ema = alpha * filtered + (1 - alpha) * ema; return ema
     }
 }
 
 class CockPitViewModel : ViewModel() {
-
     private val _destinationAirport = MutableStateFlow<Airport?>(null)
     val destinationAirport: StateFlow<Airport?> = _destinationAirport.asStateFlow()
 
     private val _rawMagneticField = MutableStateFlow(FloatArray(3) { 0f })
     private val _rawAccelerometerData = MutableStateFlow(FloatArray(3) { 0f })
+    private val _rotationVector = MutableStateFlow(FloatArray(5) { 0f })
+
 
     private val _magneticMagnitude = MutableStateFlow(0f)
-
     private val _magneticDipAngle = MutableStateFlow(0f)
-
 
     private val _acState = MutableStateFlow(AircraftStateData())
     val acState: StateFlow<AircraftStateData> = _acState.asStateFlow()
@@ -160,23 +133,48 @@ class CockPitViewModel : ViewModel() {
 
     private var lastAltitude = 0.0
     private var lastTime = System.currentTimeMillis()
-
     private var destLatRad: Double = 0.0
     private var destLonRad: Double = 0.0
     private var destLatCos: Double = 1.0
-
     private val toneGenerator = ToneGenerator(AudioManager.STREAM_ALARM, 100) // Initialize beep
     private var pitchReference: Float = 0f
+    private var bankAngleReference: Float = 0f
+
 
     fun updateRawMagneticField(x: Float, y: Float, z: Float) {
         _rawMagneticField.value = floatArrayOf(x, y, z)
-        _magneticMagnitude.value = sqrt(x * x + y * y + z * z)
-        calculateOrientationAndDip()
+        _magneticMagnitude.value = sqrt(x * x + y * y + z * z) // Calculate and update magnetic field magnitude
+        if (_rotationVector.value.all { it == 0f } || _rotationVector.value.size < 4) {
+            calculateOrientationAndDip()
+        }
     }
+
 
     fun updateRawAccelerometerData(x: Float, y: Float, z: Float) {
         _rawAccelerometerData.value = floatArrayOf(x, y, z)
-        calculateOrientationAndDip() // Recalculate dip when acc data changes
+        // Only trigger orientation/dip calculation if ROTATION_VECTOR is NOT the primary source
+        if (_rotationVector.value.all { it == 0f } || _rotationVector.value.size < 4) {
+            calculateOrientationAndDip()
+        }
+    }
+
+    fun updateRotationVector(x: Float, y: Float, z: Float, w: Float) {
+        _rotationVector.value = floatArrayOf(x, y, z, w) // Store raw rotation vector
+        calculateOrientationAndDip() // Recalculate dip angle whenever rotation vector changes
+        val R = FloatArray(16) // Rotation matrix (device to Earth coordinates)
+        val orientationAngles = FloatArray(3) // Azimuth (yaw), Pitch, Roll in radians
+
+        SensorManager.getRotationMatrixFromVector(R, _rotationVector.value)
+        SensorManager.getOrientation(R, orientationAngles)
+        val magneticHeading = (Math.toDegrees(orientationAngles[0].toDouble()) + 360) % 360
+        val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
+        val bank = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
+
+         _acState.value = _acState.value.copy(
+            magneticHeading = magneticHeading.toFloat(),
+            pitch = pitch,
+            bank = bank
+        )
     }
 
 
@@ -237,12 +235,14 @@ class CockPitViewModel : ViewModel() {
         setDestinationByIcao(icao)
         playSeatbeltChime()
         pitchReference = _acState.value.pitch
+        bankAngleReference = _acState.value.bank
         _showDestinationDialog.value = false
     }
 
     fun onClearDestination() {
         setDestinationByIcao("")
         pitchReference = 0f
+        bankAngleReference = 0f
         playSeatbeltChime()
         _showDestinationDialog.value = false
     }
@@ -273,27 +273,27 @@ class CockPitViewModel : ViewModel() {
         altitude: Double,
         speed: Float,
         courseOverGround: Float,
-        magneticHeadingFromSensor: Float,
-        pitch: Float,
-        bank: Float,
     ) {
         val currentTime = System.currentTimeMillis()
         val deltaTimeSec = (currentTime - lastTime) / 1000.0
         val deltaAlt = altitude - lastAltitude
         val rawVerticalSpeed = if (deltaTimeSec > 0.001) (deltaAlt / deltaTimeSec).toFloat() else 0f
         val smoothedVerticalSpeed = vsiSmoother.smooth(rawVerticalSpeed)
-        val smoothedPitch = pitchSmoother.smooth(pitch.coerceIn(-90f, 90f)) - pitchReference
-        val smoothedBank = bankSmoother.smooth(bank.coerceIn(-180f, 180f))
+        val currentPitchFromAcState = _acState.value.pitch
+        val currentBankFromAcState = _acState.value.bank
+
+        val smoothedPitch = pitchSmoother.smooth(currentPitchFromAcState.coerceIn(-90f, 90f)) - pitchReference
+        val smoothedBank = bankSmoother.smooth(currentBankFromAcState.coerceIn(-180f, 180f)) - bankAngleReference
         val geoField = GeomagneticField(
             coordinates.latitude.toFloat(),
             coordinates.longitude.toFloat(),
             altitude.toFloat(),
             currentTime
         )
-        val actualMagneticHeading = magneticHeadingFromSensor
-        val actualTrueHeading = (magneticHeadingFromSensor - geoField.declination + 360) % 360
-        val dest: Airport? = _destinationAirport.value
+        val actualMagneticHeading = _acState.value.magneticHeading
+        val actualTrueHeading = (actualMagneticHeading - geoField.declination + 360) % 360
 
+        val dest: Airport? = _destinationAirport.value
         val computedCourseToDest = calculateCourseToDestination(
             coordinates.latitude,
             coordinates.longitude,

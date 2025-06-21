@@ -1,107 +1,146 @@
-package com.example.flyskai
+package com.example.flyskai // Ensure this matches your package structure
 
+import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
+import com.example.flyskai.ui.shared.CockPitViewModel
 
-class SensorHandler(private val sensorManager: SensorManager) {
-    private val rotationSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        ?: throw IllegalStateException("Rotation Vector Sensor not available")
+/**
+ * Handles sensor registration and data processing.
+ * This version calculates processed orientation data (heading, pitch, roll) locally
+ * and exposes them via AtomicReferences and a callback.
+ * It also forwards RAW sensor data (magnetic field, accelerometer, rotation vector)
+ * to the CockPitViewModel for other calculations like magnetic dip angle.
+ *
+ * @param context Application context needed to get SensorManager.
+ * @param viewModel The CockPitViewModel instance to which raw sensor data will be forwarded.
+ */
+class SensorHandler(private val context: Context, private val viewModel: CockPitViewModel) {
 
-    private val geomagneticSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-    ?: throw IllegalStateException("TYPE_MAGNETIC_FIELD Vector Sensor not available")
+    private val sensorManager: SensorManager by lazy {
+        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    }
 
-    private val accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        ?: throw IllegalStateException("Accelerometer Sensor not available")
+    // --- MODIFIED: Handle sensor availability gracefully (no IllegalStateException) ---
+    private val rotationVectorSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+    private val geomagneticSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val accelerometerSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) // ACCELEROMETER SENSOR INITIALIZED
 
-    private val rotationMatrix = FloatArray(9)
+    // --- MODIFIED: rotationMatrix size must be 16 for SensorManager.getRotationMatrixFromVector ---
+    private val rotationMatrix = FloatArray(16)
     private val orientationAngles = FloatArray(3)
-    private var onOrientationChanged: ((azimuth: Float, pitch: Float, roll: Float) -> Unit)? = null
-    private var onMagneticFieldChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
-    private var onAccelerometerChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
 
-    val currentMagneticHeading = AtomicReference<Float>(0f)
-    val latestPitch = AtomicReference<Float>(0f)
-    val latestRoll = AtomicReference<Float>(0f)
+    // Callbacks for MainActivity. Note: `onOrientationChanged` is for processed data.
+    // `onRaw...` callbacks are for raw data.
+    private var onOrientationChangedCallback: ((magneticHeading: Float, pitch: Float, roll: Float) -> Unit)? = null
+    private var onRawMagneticFieldChangedCallback: ((x: Float, y: Float, z: Float) -> Unit)? = null
+    private var onRawAccelerometerChangedCallback: ((x: Float, y: Float, z: Float) -> Unit)? = null
+    private var onRawRotationVectorChangedCallback: ((x: Float, y: Float, z: Float, w: Float) -> Unit)? = null // NEW: Callback for raw rotation vector
+
 
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
-            when (event?.sensor?.type) {
+            event ?: return // Null check for the event
+
+            // --- CRITICAL FIX: Clone event.values array! ---
+            // The underlying array is reused by the system. Not cloning it leads to unstable/incorrect data.
+            val values = event.values.clone()
+
+            when (event.sensor?.type) {
                 Sensor.TYPE_ROTATION_VECTOR -> {
-                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-                    SensorManager.getOrientation(rotationMatrix, orientationAngles)
-                    val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                    val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
-                    val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
-                    val trueHeading = (azimuth + 360) % 360
-                    currentMagneticHeading.set(trueHeading)
-                    latestPitch.set(pitch)
-                    latestRoll.set(roll)
-                    onOrientationChanged?.invoke(trueHeading, pitch, roll)
-                    Log.d("SensorHandler", "Orientation - azimuth: $trueHeading, pitch: $pitch, roll: $roll")
+                    if (values.size >= 4) { // Rotation Vector has x, y, z, w
+                        // Local processing of orientation (as per your "old way")
+                        SensorManager.getRotationMatrixFromVector(rotationMatrix, values)
+                        SensorManager.getOrientation(rotationMatrix, orientationAngles)
+
+                        // --- NEW: Pass RAW rotation vector data to ViewModel ---
+                        viewModel.updateRotationVector(values[0], values[1], values[2], values[3])
+
+                    } else {
+                        Log.w("SensorHandler", "Rotation Vector event.values has less than 4 elements: ${values.size}")
+                    }
                 }
                 Sensor.TYPE_MAGNETIC_FIELD -> {
-                    val x = event.values[0]
-                    val y = event.values[1]
-                    val z = event.values[2]
-                    onMagneticFieldChanged?.invoke(x, y, z)
-                    // Optional: Log for debugging
-                    // Log.d("SensorHandler", "Magnetic Field - X: $x µT, Y: $y µT, Z: $z µT")
+                    if (values.size >= 3) {
+                        val x = values[0]
+                        val y = values[1]
+                        val z = values[2]
+                        // --- Pass RAW magnetic field data to ViewModel ---
+                        viewModel.updateRawMagneticField(x, y, z)
+                        onRawMagneticFieldChangedCallback?.invoke(x, y, z) // Optional local callback
+                    }
                 }
                 Sensor.TYPE_ACCELEROMETER -> {
-                    val x = event.values[0]
-                    val y = event.values[1]
-                    val z = event.values[2]
-                    onAccelerometerChanged?.invoke(x, y, z)
+                    // --- MODIFIED: Properly handle and pass Accelerometer data ---
+                    if (values.size >= 3) {
+                        val x = values[0]
+                        val y = values[1]
+                        val z = values[2]
+                        // --- Pass RAW accelerometer data to ViewModel ---
+                        viewModel.updateRawAccelerometerData(x, y, z)
+                        onRawAccelerometerChangedCallback?.invoke(x, y, z) // Optional local callback
+                    }
                 }
             }
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-            // Handle accuracy changes if needed
+            Log.d("SensorHandler", "Accuracy changed for ${sensor?.name}: $accuracy")
         }
     }
 
     /**
      * Starts listening for sensor updates.
-     * @param onOrientationChanged Callback to receive orientation data.
-     * @param onMagneticFieldChangedCallback Callback to receive magnetic field data (x, y, z in µT).
+     * Call this in your Activity/Fragment's onResume().
+     *
+     * @param onOrientationChanged Callback for processed orientation (magnetic heading, pitch, roll).
+     * @param onRawMagneticFieldChangedCallback Callback for raw magnetic field data.
+     * @param onRawAccelerometerChangedCallback Callback for raw accelerometer data.
+     * @param onRawRotationVectorChangedCallback Callback for raw rotation vector data.
      */
-    // --- START: Modified startListening signature and body ---
     fun startListening(
-        onOrientationChanged: (azimuth: Float, pitch: Float, roll: Float) -> Unit,
-        onMagneticFieldChangedCallback: (x: Float, y: Float, z: Float) -> Unit,
-        onAccelerometerChangedCallback: (x: Float, y: Float, z: Float) -> Unit
+        onOrientationChanged: ((magneticHeading: Float, pitch: Float, roll: Float) -> Unit)? = null,
+        onRawMagneticFieldChangedCallback: ((x: Float, y: Float, z: Float) -> Unit)? = null,
+        onRawAccelerometerChangedCallback: ((x: Float, y: Float, z: Float) -> Unit)? = null,
+        onRawRotationVectorChangedCallback: ((x: Float, y: Float, z: Float, w: Float) -> Unit)? = null // NEW parameter
     ) {
-        this.onOrientationChanged = onOrientationChanged
-        this.onMagneticFieldChanged = onMagneticFieldChangedCallback
-        this.onAccelerometerChanged = onAccelerometerChangedCallback
+        // Store all callbacks
+        this.onOrientationChangedCallback = onOrientationChanged
+        this.onRawMagneticFieldChangedCallback = onRawMagneticFieldChangedCallback
+        this.onRawAccelerometerChangedCallback = onRawAccelerometerChangedCallback
+        this.onRawRotationVectorChangedCallback = onRawRotationVectorChangedCallback // Store new callback
 
-        sensorManager.registerListener(
-            sensorListener,
-            rotationSensor,
-            SensorManager.SENSOR_DELAY_GAME
-        )
-        // Register listener for the geomagnetic sensor
-        sensorManager.registerListener(
-            sensorListener,
-            geomagneticSensor,
-            SensorManager.SENSOR_DELAY_GAME
-        )
-        sensorManager.registerListener( // NEW registration for Accelerometer
-            sensorListener,
-            accelerometerSensor,
-            SensorManager.SENSOR_DELAY_GAME
-        )
+        // --- MODIFIED: Register listeners based on sensor availability ---
+        rotationVectorSensor?.let {
+            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_GAME)
+            Log.d("SensorHandler", "Registered ROTATION_VECTOR sensor.")
+        } ?: Log.w("SensorHandler", "ROTATION_VECTOR sensor not found, will not be used for primary orientation.")
+
+        geomagneticSensor?.let {
+            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_GAME)
+            Log.d("SensorHandler", "Registered MAGNETIC_FIELD sensor.")
+        } ?: Log.w("SensorHandler", "MAGNETIC_FIELD sensor not found.")
+
+        accelerometerSensor?.let {
+            sensorManager.registerListener(sensorListener, it, SensorManager.SENSOR_DELAY_GAME)
+            Log.d("SensorHandler", "Registered ACCELEROMETER sensor.")
+        } ?: Log.w("SensorHandler", "ACCELEROMETER sensor not found.")
     }
 
+    /**
+     * Unregisters all sensor listeners. Call this in your Activity/Fragment's onPause().
+     */
     fun stopListening() {
         sensorManager.unregisterListener(sensorListener)
-        onOrientationChanged = null
-        onMagneticFieldChanged = null
-        onAccelerometerChanged = null
+        Log.d("SensorHandler", "Unregistered all sensor listeners.")
+        // Clear callbacks to prevent memory leaks
+        onOrientationChangedCallback = null
+        onRawMagneticFieldChangedCallback = null
+        onRawAccelerometerChangedCallback = null
+        onRawRotationVectorChangedCallback = null
     }
 }
