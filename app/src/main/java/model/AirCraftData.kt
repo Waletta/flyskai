@@ -45,35 +45,18 @@ data class AircraftStateData(
     val coordinates: Coordinates = Coordinates(0.0, 0.0),  // Latitude and longitude
     val altitude: Double = 0.0,                            // Height above sea level
     val speed: Float = 0f,                                 // Ground or airspeed
-    val bearing: Float = 0f,                               // Direction of movement relative to ground
+    val courseOverGround: Float = 0f,                      // Direction of movement relative to ground
     val verticalSpeed: Float = 0f,                         // Rate of climb or descent
     val pitch: Float = 0f,                                 // Nose angle relative to horizon
     val bank: Float = 0f,                                  // Wing angle relative to horizon (degrees, positive for right wing down)
     val trueHeading: Float = 0f,                           // Direction aircraft is pointing (true north)
     val magneticHeading: Float = 0f,                       // Direction aircraft is pointing (magnetic north)
     val courseToDest: Float = 0f,                          // Direction to destination
-    val destinationAirport: Airport? = null                // Optional destination airport data
-) {
-    companion object {
-        fun currentCoordinates(latitude: Double, longitude: Double): Coordinates =
-            Coordinates(latitude, longitude)
-
-        fun destinationCoordinates(airport: Airport?): Coordinates =
-            airport?.let { Coordinates(it.lat, it.lon) }
-                ?: Coordinates(0.0, 0.0)
-
-        fun destinationAirportName(airport: Airport?): String =
-            airport?.name ?: ""
-        }
-
-        val nowCoordinates: Coordinates
-            get() = currentCoordinates(coordinates.latitude, coordinates.longitude)
-
-        val destCoordinates: Coordinates
-            get() = destinationCoordinates(destinationAirport)
-        val destAirportName: String
-            get() = destinationAirportName(destinationAirport)
-    }
+    val destinationAirport: Airport? = null,               // Optional destination airport data
+    val eta: Long? = null,
+    val magneticFieldMagnitude: Float = 0.0f,
+    val magneticDipAngle: Float = 0.0f
+)
 
 data class Coordinates(
     val latitude: Double = 0.00,

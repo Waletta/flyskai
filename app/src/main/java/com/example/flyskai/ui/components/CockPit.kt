@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.toArgb
 
 import com.example.flyskai.ui.shared.SpeedUnit
 import model.Airport
@@ -48,27 +49,29 @@ import com.example.flyskai.ui.shared.AppSettings
 import com.example.flyskai.ui.shared.CockPitViewModel
 import com.example.flyskai.ui.shared.DistanceUnit
 import com.example.flyskai.ui.shared.VSIUnit
-
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun CockPit(cpVm: CockPitViewModel,
     ) {
-
     val acState by cpVm.acState.collectAsStateWithLifecycle()
     val displaySpeed = formatSpeed(acState.speed)
     val displayAltitude = formatAltitude(acState.altitude.toFloat())
-
-
     val destAirport by cpVm.destinationAirport.collectAsState()
     val course = acState.courseToDest
     val pitch = acState.pitch
     val bank = acState.bank
     val speed = acState.speed
-    val track = acState.bearing
+    val track = acState.courseOverGround
     val trueHeading = acState.trueHeading
     val magneticHeading = acState.magneticHeading
     val verticalSpeed = acState.verticalSpeed
     val rtcoordinates = acState.coordinates
+    val eta = acState.eta
+    val magneticFieldStrength = acState.magneticFieldMagnitude
+    val magneticDipAngle = acState.magneticDipAngle
 
     val drift: Float? = if (speed > 60f) {
         ((track - trueHeading + 360) % 360).let {
@@ -95,48 +98,131 @@ fun CockPit(cpVm: CockPitViewModel,
     Box(
         modifier = Modifier
             .background(Color(0xFF303030))
-            .height(310.dp)
+            .height(325.dp)
             .fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-//
-            SpeedTapeAirbus(
-                modifier = Modifier.fillMaxHeight(),
-                value = displaySpeed,
-                speedUnit = AppSettings.speedUnit,
-            )
 
-            Box(modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .fillMaxHeight()
-                .aspectRatio(1f)
-                .padding(bottom = 12.dp)) {
-                HeadingTrackCompass(
-                    track = track,
-                    magneticHeading = magneticHeading,
-                    pitch = pitch,
-                    bank = bank,
-                    drift = drift,
-                    verticalSpeed = verticalSpeed,
-                    course = course.toFloat(),
-                    destinationAirport = destAirport,
-                    distanceToDestination = distanceToDestination,
-                )
+            Column(modifier = Modifier.fillMaxSize()) { // Use Column to stack elements vertically
+
+                if (destAirport != null) {
+                    DestinationInfoBar(
+                        destinationAirport = destAirport,
+                        distanceToDestination = distanceToDestination,
+                        eta = eta,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .background(Color.Black)
+                    )
+                    // Add a Spacer only if the DestinationInfoBar is visible
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f), // This makes the row take up remaining space
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SpeedTapeAirbus(
+                        modifier = Modifier.fillMaxHeight(),
+                        value = displaySpeed,
+                        speedUnit = AppSettings.speedUnit,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .fillMaxHeight()
+                            .aspectRatio(1f)
+                            .padding(bottom = 12.dp)
+                    ) {
+                        HeadingTrackCompass(
+                            track = track,
+                            magneticHeading = magneticHeading,
+                            pitch = pitch,
+                            bank = bank,
+                            drift = drift,
+                            verticalSpeed = verticalSpeed,
+                            magneticFieldStrength = magneticFieldStrength,
+                            magneticDipAngle = magneticDipAngle,
+                            course = course,
+                            destinationAirport = destAirport,
+                        )
+                    }
+
+                    AltitudeTapeAirbus(
+                        modifier = Modifier.fillMaxHeight(),
+                        altitude = displayAltitude,
+                        altitudeUnit = AppSettings.altitudeUnit,
+                    )
+                }
             }
+        }
+    }
 
 
-            AltitudeTapeAirbus(
-                modifier = Modifier.fillMaxHeight(),
-                altitude = displayAltitude, // The formatted altitude value
-                altitudeUnit = AppSettings.altitudeUnit,
-                // qnh = acState.qnh // You would get this from your ViewModel
-            )
+@Composable
+fun DestinationInfoBar(
+    destinationAirport: Airport?,
+    distanceToDestination: Double,
+    eta: Long?,
+    modifier: Modifier = Modifier
+) {
+    val labelPaint = android.graphics.Paint().apply {
+        textAlign = android.graphics.Paint.Align.LEFT
+        isFakeBoldText = true
+        textSize = 34f // Match the size of other labels for consistency
+        typeface = Typeface.MONOSPACE
+        letterSpacing = 0f
+    }
+    val textPxSize = with(LocalDensity.current) { 10.sp.toPx() }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (destinationAirport != null) {
+            val airportName = destinationAirport.name
+            val distance = formatDistance(distanceToDestination)
+            val distanceStr =
+                String.format(Locale.US, "%.0f %s", distance, AppSettings.distanceUnit.toString())
+
+            val destinationLabel = "DST  ${airportName.uppercase()}  $distanceStr"
+            Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
+                drawContext.canvas.nativeCanvas.apply {
+                    labelPaint.color = "#FFA500".toColorInt() // Orange color
+                    labelPaint.textSize = textPxSize
+                    drawText(destinationLabel, 0f, textPxSize, labelPaint)
+                }
+            }
+        } else {
+            Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
+                drawContext.canvas.nativeCanvas.apply {
+                    labelPaint.color = "#FFA500".toColorInt() // Orange color
+                    labelPaint.textSize = textPxSize
+                    drawText("DST  ---", 0f, textPxSize, labelPaint)
+                }
+            }
         }
 
+        val etaStr = eta?.let {
+            Instant.ofEpochMilli(it)
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm"))
+        } ?: "N/A"
+        val etaLabel = "ETA  $etaStr"
+
+        Canvas(modifier = Modifier.weight(1f).height(IntrinsicSize.Min)) {
+            drawContext.canvas.nativeCanvas.apply {
+                labelPaint.color = android.graphics.Color.WHITE
+                labelPaint.textSize = textPxSize
+                labelPaint.textAlign = android.graphics.Paint.Align.RIGHT // Align ETA to the right
+                drawText(etaLabel, size.width, textPxSize, labelPaint)
+            }
+        }
     }
 }
 
@@ -148,28 +234,14 @@ fun HeadingTrackCompass(
     bank: Float,
     drift: Float?,
     verticalSpeed: Float,
+    magneticFieldStrength: Float, // in µT
+    magneticDipAngle: Float,
     course: Float?,
-    destinationAirport: Airport? = null,
-    distanceToDestination: Double
+    destinationAirport: Airport?,
 ) {
 
-//    val infiniteTransition = rememberInfiniteTransition()
-//    val pulsingAlpha by infiniteTransition.animateFloat(
-//        initialValue = 0.3f,
-//        targetValue = 1f,
-//        animationSpec = infiniteRepeatable(
-//            animation = tween(1000, easing = LinearEasing),
-//            repeatMode = RepeatMode.Reverse
-//        )
-//    )
-
-//    val driftAlpha by animateFloatAsState(
-//        targetValue = if (drift != null) 1f else pulsingAlpha,
-//        animationSpec = tween(durationMillis = 500)
-//    )
-//
     val tapeColor = Color(0xFF303030)
-    val driftAlpha = if (drift != null) 1f else 0.3f // Static value instead of animation
+    val driftAlpha = if (drift != null) 1f else 0.3f
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(color = tapeColor)
@@ -188,38 +260,34 @@ fun HeadingTrackCompass(
         val pitchOffset = pitch * -3
 
         // ARTIFICIAL HORIZON BACKGROUND
-        // rotate(-bank, pivot = center) {
         drawRect(
             color = Color(0xFF87CEEB), // Sky
             topLeft = Offset.Zero,
             size = Size(width = size.width, height = center.y + pitchOffset)
         )
-        // Draw a single ground rectangle from the horizon line to the bottom
         drawRect(
             color = Color(0xFF8B4513), // Ground
             topLeft = Offset(x = 0f, y = center.y + pitchOffset),
             size = Size(width = size.width, height = size.height - (center.y + pitchOffset))
         )
-        // Draw the white horizon line itself
         drawLine(
             color = Color.White,
             start = Offset(x = 0f, y = center.y + pitchOffset),
             end = Offset(x = size.width, y = center.y + pitchOffset),
             strokeWidth = 4f
         )
-        //}
 
+        // Pitch ladders
         val pixelsPerDegree = 7f
         for (pitchAngle in -30..30 step 5) {
             if (pitchAngle == 0) continue
-            val yOffset = pitchAngle * pixelsPerDegree
+            val yOffset = -pitchAngle * pixelsPerDegree
 
-            // --- NEW: Calculate stroke width based on pitch angle ---
             val dynamicLineWidth = when (abs(pitchAngle)) {
-                30 -> 100f // Longest line for 30 degrees
-                20 -> 80f  // Long line for 20 degrees
-                10 -> 60f  // Medium line for 10 degrees
-                else -> 40f // Shorter line for 5, 15, 25 degrees
+                30 -> 100f
+                20 -> 80f
+                10 -> 60f
+                else -> 40f
             }
             drawLine(
                 color = Color.White,
@@ -303,19 +371,14 @@ fun HeadingTrackCompass(
 
         // TRACK ARROW
         rotate(track, pivot = center) {
-            drawLine(
-                color = Color.Green,
-                start = center,
-                end = Offset(center.x, center.y - radius),
-                strokeWidth = 6f
-            )
+            drawLine(color = Color.Green, start = center, end = Offset(center.x, center.y - radius), strokeWidth = 6f)
         }
 
         // COURSE TO DESTINATION
-        if(destinationAirport != null){
-            rotate(course?.toFloat() ?: 0f, pivot = center) {
+        if (destinationAirport != null) { // Only draw course arrow if there's a destination and course
+            rotate(course ?: 0f, pivot = center) { // Use course directly, provide default if null
                 drawLine(
-                    color = Color(0xFFFFA500),
+                    color = Color(0xFFFFA500), // Orange
                     start = center,
                     end = Offset(center.x, center.y - radius),
                     strokeWidth = 6f
@@ -338,7 +401,6 @@ fun HeadingTrackCompass(
                 end = center,
                 strokeWidth = 6f
             )
-
             drawLine(
                 color = Color.Yellow,
                 start = Offset(center.x, center.y + triangleSize),
@@ -346,7 +408,6 @@ fun HeadingTrackCompass(
                 strokeWidth = 4f
             )
         }
-
 
         // NORTH LABEL
         val rad = toRadians(-90.0) // North at 0/360 degrees
@@ -368,6 +429,8 @@ fun HeadingTrackCompass(
             )
         }
 
+
+        // Drift is wrong !!
         drawContext.canvas.nativeCanvas.apply {
             val verticalStart = center.y + radius + 60f
             val rightX = center.x + radius - 200f
@@ -384,10 +447,7 @@ fun HeadingTrackCompass(
 
             labelPaint.color = android.graphics.Color.RED
             drawText(driftLabel, 8f, verticalStart, labelPaint)
-
             labelPaint.alpha = 255 // Reset alpha
-
-
             val vsi = formatVSI(verticalSpeed)
             val vsiLabel = if (AppSettings.altitudeUnit == AltitudeUnit.FEET) "fpm" else "mpm"
             val paddedVsi = String.format(Locale.US,"%04d", abs(vsi))
@@ -401,23 +461,14 @@ fun HeadingTrackCompass(
                 labelPaint
             )
 
-            if(destinationAirport != null){
-                labelPaint.color = "#FFA500".toColorInt()
-                val airportName = destinationAirport.name
-                val distance = formatDistance(distanceToDestination)
-                val distanceStr = String.format(Locale.US, "%.0f %s", distance, AppSettings.distanceUnit.toString())
-                val destinationLabel = "DST  ${airportName.uppercase()}  $distanceStr"
-                drawText(
-                    destinationLabel,
-                    8f,
-                    center.y + radius + 132f,
-                    labelPaint
-                )
-            }
+                labelPaint.color = Color(0xFF4CAF50).toArgb()
+                val magneticFieldText = String.format(Locale.US, "MAG %.1f µT", magneticFieldStrength)
+                drawText(magneticFieldText, 8f, center.y + radius + 132f, labelPaint)
+
 
             labelPaint.color = android.graphics.Color.WHITE
             drawText(
-                String.format(Locale.US, "B.angle %03.0f°", bank),
+                String.format(Locale.US, "BA %03.0f°", bank),
                 rightX,
                 verticalStart,
                 labelPaint
@@ -428,6 +479,11 @@ fun HeadingTrackCompass(
                 verticalStart + 36f, // Offset by 36f to place below BA label
                 labelPaint
             )
+
+                labelPaint.color = Color(0xFF2196F3).toArgb()
+                val dipAngleText = String.format(Locale.US, "DIP %+.1f°", magneticDipAngle) // Format with sign and one decimal
+                drawText(dipAngleText, rightX, verticalStart + 72f, labelPaint)
+
         }
     }
 }
@@ -441,8 +497,6 @@ fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return r * c // km to NM
 }
-
-
 
 fun formatSpeed(mps: Float): Int {
     return when (AppSettings.speedUnit) {
@@ -471,7 +525,6 @@ fun formatAltitude(meters: Float): Int {
         AltitudeUnit.FEET -> (meters * 3.28084).toInt()
     }
 }
-
 
 @Composable
 fun SpeedTapeAirbus(
@@ -504,7 +557,6 @@ fun SpeedTapeAirbus(
         val indicatorTop = center.y - indicatorBoxHeight / 2
         val indicatorBottom = center.y + indicatorBoxHeight / 2
 
-        // --- CORRECTED DRAWING ORDER AND LOGIC ---
 
         // 1. Draw the Moving Tape FIRST
         clipRect(
@@ -586,7 +638,6 @@ fun SpeedTapeAirbus(
     }
 }
 
-
 @Composable
 fun AltitudeTapeAirbus(
     modifier: Modifier = Modifier,
@@ -637,10 +688,7 @@ fun AltitudeTapeAirbus(
             val endValue = altitude + verticalRange / 2
 
             for (currentValue in startValue..endValue) {
-                // --- THE FIX IS HERE ---
-                // Ignore any altitude value that is less than zero.
                 if (currentValue < 0) continue
-
                 if (currentValue % minorTickInterval != 0) continue
                 val yPos = center.y - (currentValue - altitude) * pixelsPerUnit
 
@@ -679,10 +727,9 @@ fun AltitudeTapeAirbus(
         val indicatorPointerWidth = 15.dp.toPx()
         drawLine(
             color = Color.Yellow,
-            // The line is drawn at the vertical center
             start = Offset(x = center.x - indicatorBoxWidth / 2 - indicatorPointerWidth, y = center.y),
             end = Offset(x = center.x - indicatorBoxWidth / 2, y = center.y),
-            strokeWidth = 6f // A bit thicker to be easily visible
+            strokeWidth = 6f
         )
 
         // 3. Draw the actual current altitude text LAST

@@ -4,9 +4,6 @@ import android.Manifest
 import com.example.flyskai.ui.components.MainScreen
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +16,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.flyskai.databinding.ActivityMainBinding
 import com.example.flyskai.ui.shared.CockPitViewModel
 import com.google.android.gms.location.LocationCallback
@@ -26,13 +24,10 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import model.Coordinates
-
-
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -40,24 +35,15 @@ class MainActivity : AppCompatActivity() {
     private val locationPermissionRequest = 100
     private lateinit var acCallback: LocationCallback
     private lateinit var acRequest: LocationRequest
-    private lateinit var sensorManager: SensorManager
-    private lateinit var rotationSensor: Sensor
-    private val rotationMatrix = FloatArray(9)
-    private val orientationAngles = FloatArray(3)
+    private lateinit var sensorHandler: SensorHandler
     private val cpViewModel: CockPitViewModel by viewModels()
-    private var currentTrueHeading: Float = 0f
     private var skipFirstFix = false
 
-    private var latestPitch: Float = 0f
-    private var latestRoll: Float = 0f
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-            ?: throw IllegalStateException("Rotation Vector Sensor not available")
+        sensorHandler = SensorHandler(getSystemService(SENSOR_SERVICE) as SensorManager)
 
         acRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
@@ -72,15 +58,17 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
                 locationResult.lastLocation?.let { location ->
-                    CoroutineScope(Dispatchers.Default).launch {
+                    lifecycleScope.launch(Dispatchers.Default) {
                         val lat = location.latitude
                         val lon = location.longitude
                         val speedMs = location.speed
                         val altitude = location.altitude
-                        val bearing = location.bearing
-                        val trueHeading = currentTrueHeading
+                        val courseOverGround = location.bearing
+                        val magneticHeading = sensorHandler.currentMagneticHeading.get()
+                        val pitch = sensorHandler.latestPitch.get()
+                        val roll = sensorHandler.latestRoll.get()
                         withContext(Dispatchers.Main) {
-                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, bearing, trueHeading, latestPitch, latestRoll)
+                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, courseOverGround, magneticHeading, pitch, roll)
                         }
                     }
                 }
@@ -104,8 +92,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-
-
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
         return true
@@ -114,18 +100,26 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onResume() {
         super.onResume()
-        sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
+        sensorHandler.startListening(
+            onOrientationChanged = { azimuth, pitch, roll ->
+            },
+            onMagneticFieldChangedCallback = { x, y, z ->
+                cpViewModel.updateRawMagneticField(x, y, z)
+            },
+            onAccelerometerChangedCallback = { x, y, z ->
+                cpViewModel.updateRawAccelerometerData(x, y, z)
+            }
+        )
         skipFirstFix = true
         if (checkPermission()) {
             startLocationUpdates()
         }
-
     }
 
     override fun onPause() {
         super.onPause()
         fusedLocationClient.removeLocationUpdates(acCallback)
-        sensorManager.unregisterListener(sensorListener)
+        sensorHandler.stopListening()
     }
 
     private fun checkPermission(): Boolean {
@@ -141,25 +135,6 @@ class MainActivity : AppCompatActivity() {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
             locationPermissionRequest
         )
-    }
-
-    private val sensorListener = object : SensorEventListener {
-        override fun onSensorChanged(event: SensorEvent?) {
-            if (event?.sensor?.type == Sensor.TYPE_ROTATION_VECTOR) {
-                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-                SensorManager.getOrientation(rotationMatrix, orientationAngles)
-                val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
-                val pitch = Math.toDegrees(orientationAngles[1].toDouble()).toFloat()
-                val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
-                Log.d("MainActivity", "Sensor update - pitch: $pitch, roll: $roll")
-                currentTrueHeading = (azimuth + 360) % 360
-
-                latestPitch = pitch
-                latestRoll = roll
-            }
-        }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
     private fun startLocationUpdates() {

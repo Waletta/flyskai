@@ -51,7 +51,6 @@ fun MapboxMap(
                         pulsingEnabled = true
                     }
                 }
-                // create the annotation manager
                 pointAnnotationManager = annotations.createPointAnnotationManager()
                 location.addOnIndicatorPositionChangedListener { point ->
                     lastKnownLocation = point
@@ -83,7 +82,6 @@ fun MapboxMap(
             mapView?.location?.removeOnIndicatorPositionChangedListener(listener)
         }
     }
-
     LaunchedEffect(recenterRequest) {
         if (recenterRequest) {
             lastKnownLocation?.let { point ->

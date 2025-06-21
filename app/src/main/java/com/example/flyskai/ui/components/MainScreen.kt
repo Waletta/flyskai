@@ -79,8 +79,6 @@ private fun AppNavHost(
         modifier = modifier
     ) {
         composable("onboard") {
-            // The parent Column needs to fill the available space
-            // for the weights of its children to be calculated correctly.
             Column(modifier = Modifier.fillMaxSize()) {
                 CockPit(
                     cpVm = viewModel,
@@ -88,11 +86,9 @@ private fun AppNavHost(
                 MapboxMap(
                     destIcao = destIcao,
                     recenterRequest = recenterToggle,
-                    // 2. Assign 60% of the vertical space to the Map.
                 )
             }
         }
-        // ... other composable routes
     }
 }
 
