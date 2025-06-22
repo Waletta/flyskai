@@ -4,11 +4,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.util.Log
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.atan2
 import kotlin.math.sqrt
-
 
 class SensorHandler(private val sensorManager: SensorManager) {
     private val rotationSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
@@ -22,7 +20,7 @@ class SensorHandler(private val sensorManager: SensorManager) {
 
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
-    private var onOrientationChanged: ((azimuth: Float, pitch: Float, roll: Float) -> Unit)? = null
+    private var onOrientationChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
     private var onMagneticFieldChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
     private var onAccelerometerChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
 
@@ -33,20 +31,17 @@ class SensorHandler(private val sensorManager: SensorManager) {
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
             when (event?.sensor?.type) {
-//                Sensor.TYPE_ROTATION_VECTOR -> {
-//                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-//                    SensorManager.getOrientation(rotationMatrix, orientationAngles)
-//                    //onOrientationChanged?.invoke(trueHeading, pitch, roll)
-//                    //Log.d("SensorHandler", "Orientation - azimuth: $trueHeading, pitch: $pitch, roll: $roll")
-//                }
-                Sensor.TYPE_MAGNETIC_FIELD -> {
-                    val x = event.values[0]
-                    val y = event.values[1]
-                    val z = event.values[2]
-                    onMagneticFieldChanged?.invoke(x, y, z)
-                    //Log.d("SensorHandler", "Magnetic Field - X: $x µT, Y: $y µT, Z: $z µT")
-                }
+                Sensor.TYPE_ROTATION_VECTOR -> {
+                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                    SensorManager.getOrientation(rotationMatrix, orientationAngles)
 
+                    val x = orientationAngles[0]
+                    val y = orientationAngles[1]
+                    val z = orientationAngles[2]
+                    val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
+                    latestRoll.set(roll)
+                    onOrientationChanged?.invoke(x, y, z)
+                }
                 Sensor.TYPE_ACCELEROMETER -> {
                     val x = event.values[0]
                     val y = event.values[1]
@@ -55,12 +50,9 @@ class SensorHandler(private val sensorManager: SensorManager) {
                     val pitchRadians = atan2(y, sqrt(x * x + z * z))
                     val pitch = Math.toDegrees(pitchRadians.toDouble()).toFloat()
                     latestPitch.set(-pitch)
-
                     val azimuth = Math.toDegrees(x.toDouble()).toFloat()
-                    val roll = Math.toDegrees(z.toDouble()).toFloat()
                     val trueHeading = (azimuth + 360) % 360
                     currentMagneticHeading.set(trueHeading)
-                    latestRoll.set(roll)
                     onAccelerometerChanged?.invoke(x, y, z)
                 }
             }
@@ -71,43 +63,22 @@ class SensorHandler(private val sensorManager: SensorManager) {
         }
     }
 
-    /**
-     * Starts listening for sensor updates.
-     * @param onOrientationChanged Callback to receive orientation data.
-     * @param onMagneticFieldChangedCallback Callback to receive magnetic field data (x, y, z in µT).
-     */
-    // --- START: Modified startListening signature and body ---
-    fun startListening(
-        onOrientationChanged: (azimuth: Float, pitch: Float, roll: Float) -> Unit,
-        onMagneticFieldChangedCallback: (x: Float, y: Float, z: Float) -> Unit,
-        onAccelerometerChangedCallback: (x: Float, y: Float, z: Float) -> Unit
-    ) {
-        this.onOrientationChanged = onOrientationChanged
-        this.onMagneticFieldChanged = onMagneticFieldChangedCallback
-        this.onAccelerometerChanged = onAccelerometerChangedCallback
-
+    fun startListening() {
         sensorManager.registerListener(
             sensorListener,
             rotationSensor,
-            SensorManager.SENSOR_DELAY_GAME
+            SensorManager.SENSOR_DELAY_NORMAL
         )
-        // Register listener for the geomagnetic sensor
         sensorManager.registerListener(
             sensorListener,
-            geomagneticSensor,
-            SensorManager.SENSOR_DELAY_GAME
-        )
-        sensorManager.registerListener( // NEW registration for Accelerometer
-            sensorListener,
             accelerometerSensor,
-            SensorManager.SENSOR_DELAY_GAME
+            SensorManager.SENSOR_DELAY_NORMAL
         )
     }
 
     fun stopListening() {
         sensorManager.unregisterListener(sensorListener)
         onOrientationChanged = null
-        onMagneticFieldChanged = null
         onAccelerometerChanged = null
     }
 }

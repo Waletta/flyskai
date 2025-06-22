@@ -100,16 +100,7 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onResume() {
         super.onResume()
-        sensorHandler.startListening(
-            onOrientationChanged = { azimuth, pitch, roll ->
-            },
-            onMagneticFieldChangedCallback = { x, y, z ->
-                cpViewModel.updateRawMagneticField(x, y, z)
-            },
-            onAccelerometerChangedCallback = { x, y, z ->
-                cpViewModel.updateRawAccelerometerData(x, y, z)
-            }
-        )
+        sensorHandler.startListening()
         skipFirstFix = true
         if (checkPermission()) {
             startLocationUpdates()
