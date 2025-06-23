@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
     private val fusedLocationClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val locationPermissionRequest = 100
     private lateinit var acCallback: LocationCallback
-    private lateinit var acRequest: LocationRequest
+    private lateinit var locationRequest: LocationRequest
     private lateinit var sensorHandler: SensorHandler
     private val cpViewModel: CockPitViewModel by viewModels()
     private var skipFirstFix = false
@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         sensorHandler = SensorHandler(getSystemService(SENSOR_SERVICE) as SensorManager)
 
-        acRequest = LocationRequest.Builder(1000L)
+        locationRequest = LocationRequest.Builder(1000L)
             .setMinUpdateIntervalMillis(2000L)
             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
             .setMaxUpdateDelayMillis(4000L)
@@ -67,8 +67,18 @@ class MainActivity : AppCompatActivity() {
                         val magneticHeading = sensorHandler.currentMagneticHeading.get()
                         val pitch = sensorHandler.latestPitch.get()
                         val roll = sensorHandler.latestRoll.get()
+                        val magneticField = sensorHandler.latestMagneticField.get()
+                        if (magneticField.all { it == 0f }) {
+                            Log.w("Sensor", "Magnetometer data not ready")
+                            return@launch
+                        }
                         withContext(Dispatchers.Main) {
-                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, courseOverGround, magneticHeading, pitch, roll)
+                            cpViewModel.updateACData(Coordinates(lat, lon), altitude, speedMs, courseOverGround,
+                                magneticHeading, pitch, roll,
+                                magneticFieldX = magneticField[0],
+                                magneticFieldY = magneticField[1],
+                                magneticFieldZ = magneticField[2]
+                                )
                         }
                     }
                 }
@@ -96,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         menuInflater.inflate(R.menu.main, menu)
         return true
     }
+
 
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onResume() {
@@ -132,7 +143,7 @@ class MainActivity : AppCompatActivity() {
         try {
             if (checkPermission()) {
                 fusedLocationClient.requestLocationUpdates(
-                    acRequest,
+                    locationRequest,
                     acCallback,
                     Looper.getMainLooper()
                 )

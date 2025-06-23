@@ -121,7 +121,7 @@ data class AircraftStateData(
     val magneticHeading: Float = 0f,                       // Direction aircraft is pointing (magnetic north)
     val courseToDest: Float = 0f,                          // Direction to destination
     val destinationAirport: Airport? = null,               // Optional destination airport data
-    val destinationDistance: Double = 0.0,                // Distance to destination
+    val destinationDistance: Double = 0.0,                 // Distance to destination
     val eta: Long? = null,
     val magneticFieldMagnitude: Float = 0.0f,
 )

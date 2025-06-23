@@ -12,21 +12,21 @@ class SensorHandler(private val sensorManager: SensorManager) {
     private val rotationSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         ?: throw IllegalStateException("Rotation Vector Sensor not available")
 
-    private val geomagneticSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-        ?: throw IllegalStateException("TYPE_MAGNETIC_FIELD Vector Sensor not available")
-
-    private val accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val accelerometerSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         ?: throw IllegalStateException("Accelerometer Sensor not available")
+
+    private val magnetometerSensor: Sensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        ?: throw IllegalStateException("Magnetometer Sensor not available")
 
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
-    private var onOrientationChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
-    private var onMagneticFieldChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
-    private var onAccelerometerChanged: ((x: Float, y: Float, z: Float) -> Unit)? = null
+    private var latestAccel = FloatArray(3) { 0f }
+    private var latestMag = FloatArray(3) { 0f }
 
     val currentMagneticHeading = AtomicReference<Float>(0f)
     val latestPitch = AtomicReference<Float>(0f)
     val latestRoll = AtomicReference<Float>(0f)
+    val latestMagneticField = AtomicReference<FloatArray>(floatArrayOf(0f, 0f, 0f))
 
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
@@ -34,26 +34,23 @@ class SensorHandler(private val sensorManager: SensorManager) {
                 Sensor.TYPE_ROTATION_VECTOR -> {
                     SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                     SensorManager.getOrientation(rotationMatrix, orientationAngles)
-
-                    val x = orientationAngles[0]
-                    val y = orientationAngles[1]
-                    val z = orientationAngles[2]
                     val roll = Math.toDegrees(orientationAngles[2].toDouble()).toFloat()
                     latestRoll.set(roll)
-                    onOrientationChanged?.invoke(x, y, z)
                 }
                 Sensor.TYPE_ACCELEROMETER -> {
+                    latestAccel = event.values.copyOf()
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-
                     val pitchRadians = atan2(y, sqrt(x * x + z * z))
                     val pitch = Math.toDegrees(pitchRadians.toDouble()).toFloat()
                     latestPitch.set(-pitch)
-                    val azimuth = Math.toDegrees(x.toDouble()).toFloat()
-                    val trueHeading = (azimuth + 360) % 360
-                    currentMagneticHeading.set(trueHeading)
-                    onAccelerometerChanged?.invoke(x, y, z)
+                    updateHeading()
+                }
+                Sensor.TYPE_MAGNETIC_FIELD -> {
+                    latestMag = event.values.copyOf()
+                    latestMagneticField.set(event.values.copyOf())
+                    updateHeading()
                 }
             }
         }
@@ -61,23 +58,27 @@ class SensorHandler(private val sensorManager: SensorManager) {
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
             // Handle accuracy changes if needed
         }
+
+        private fun updateHeading() {
+            if (latestAccel.all { it == 0f } || latestMag.all { it == 0f }) return
+            val rotationMatrix = FloatArray(9)
+            val inclinationMatrix = FloatArray(9)
+            if (SensorManager.getRotationMatrix(rotationMatrix, inclinationMatrix, latestAccel, latestMag)) {
+                val orientation = FloatArray(3)
+                SensorManager.getOrientation(rotationMatrix, orientation)
+                val heading = Math.toDegrees(orientation[0].toDouble()).toFloat()
+                currentMagneticHeading.set((heading + 360) % 360)
+            }
+        }
     }
 
     fun startListening() {
-        sensorManager.registerListener(
-            sensorListener,
-            rotationSensor,
-            SensorManager.SENSOR_DELAY_NORMAL
-        )
-        sensorManager.registerListener(
-            sensorListener,
-            accelerometerSensor,
-            SensorManager.SENSOR_DELAY_NORMAL
-        )
+        sensorManager.registerListener(sensorListener, rotationSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(sensorListener, accelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(sensorListener, magnetometerSensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     fun stopListening() {
         sensorManager.unregisterListener(sensorListener)
     }
-
 }

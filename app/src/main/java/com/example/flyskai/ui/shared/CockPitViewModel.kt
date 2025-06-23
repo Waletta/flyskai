@@ -19,8 +19,8 @@
     import kotlin.math.cos
      import kotlin.math.PI
     import kotlin.math.ln
+    import kotlin.math.sqrt
     import kotlin.math.tan
-
 
     private object Constants {
         const val KNOTS_TO_MPS = 0.514444f
@@ -36,7 +36,6 @@
     ) {
         private var smoothedValue: Float = 0f
         private var initialized = false
-
         fun smooth(input: Float): Float {
             val filtered = if (kotlin.math.abs(input - smoothedValue) < deadband) {
                 smoothedValue
@@ -81,14 +80,14 @@
 
     class CockPitViewModel : ViewModel() {
 
+        private val _acState = MutableStateFlow(AircraftStateData())
+        val acState: StateFlow<AircraftStateData> = _acState.asStateFlow()
+
         private val _destinationAirport = MutableStateFlow<Airport?>(null)
         val destinationAirport: StateFlow<Airport?> = _destinationAirport.asStateFlow()
 
         private val _magneticMagnitude = MutableStateFlow(0f)
 
-
-        private val _acState = MutableStateFlow(AircraftStateData())
-        val acState: StateFlow<AircraftStateData> = _acState.asStateFlow()
 
         private val _eta = MutableStateFlow<Long?>(null)
         val eta: StateFlow<Long?> = _eta.asStateFlow()
@@ -114,11 +113,9 @@
         private var pitchReference: Float = 0f
         private var bankAngleReference: Float = 0f
 
-        private val _isPitchCalibrating = MutableStateFlow(false)
-        val isPitchCalibrating: StateFlow<Boolean> = _isPitchCalibrating.asStateFlow()
+        private val _isCalibrating = MutableStateFlow(false)
+        val isCalibrating: StateFlow<Boolean> = _isCalibrating.asStateFlow()
 
-        private val _isBankCalibrating = MutableStateFlow(false)
-        val isBankCalibrating: StateFlow<Boolean> = _isBankCalibrating.asStateFlow()
 
         fun onDestinationClick() {
             _showDestinationDialog.value = true
@@ -152,13 +149,11 @@
             bankSmoother.reset()
 
             // Set calibration flags to true
-            _isPitchCalibrating.value = true
-            _isBankCalibrating.value = true
+            _isCalibrating.value = true
 
             viewModelScope.launch {
                 delay(5000L)
-                _isPitchCalibrating.value = false
-                _isBankCalibrating.value = false
+                _isCalibrating.value = false
             }
         }
 
@@ -186,10 +181,14 @@
             magneticHeadingFromSensor: Float,
             pitch: Float,
             bank: Float,
+            magneticFieldX: Float,
+            magneticFieldY: Float,
+            magneticFieldZ: Float
         ) {
             require(speed >= 0f) { "Speed cannot be negative" }
             require(courseOverGround in 0f..360f) { "Course must be between 0 and 360 degrees" }
             require(magneticHeadingFromSensor in 0f..360f) { "Magnetic heading must be between 0 and 360 degrees" }
+            require(magneticFieldX.isFinite() && magneticFieldY.isFinite() && magneticFieldZ.isFinite()) { "Magnetic field components must be finite" }
 
             val currentTime = System.currentTimeMillis()
             val deltaTimeSec = (currentTime - lastTime) / 1000.0
@@ -207,6 +206,8 @@
             val actualMagneticHeading = magneticHeadingFromSensor
             val actualTrueHeading = (magneticHeadingFromSensor - geoField.declination + 360) % 360
             val dest: Airport? = _destinationAirport.value
+
+            val magneticFieldMagnitude = sqrt(magneticFieldX * magneticFieldX + magneticFieldY * magneticFieldY + magneticFieldZ * magneticFieldZ)
 
             val computedCourseToDest = calculateCourseToDestination(
                 coordinates.latitude,
@@ -239,7 +240,7 @@
                 destinationAirport = dest,
                 destinationDistance = distanceMetricToDestination,
                 eta = etaTimestamp,
-                magneticFieldMagnitude = _magneticMagnitude.value,
+                magneticFieldMagnitude = magneticFieldMagnitude,
             )
             _eta.value = etaTimestamp
 

@@ -69,8 +69,7 @@ fun CockPit(cpVm: CockPitViewModel,
         null
     }
 
-    val isPitchCalibrating by cpVm.isPitchCalibrating.collectAsStateWithLifecycle()
-    val isBankCalibrating by cpVm.isBankCalibrating.collectAsStateWithLifecycle()
+    val isCalibrating by cpVm.isCalibrating.collectAsStateWithLifecycle()
 
     Box(
         modifier = Modifier
@@ -123,8 +122,7 @@ fun CockPit(cpVm: CockPitViewModel,
                             magneticFieldStrength = magneticFieldStrength,
                             course = course,
                             destinationAirport = destAirport,
-                            isPitchCalibrating = isPitchCalibrating,
-                            isBankCalibrating = isBankCalibrating
+                            isCalibrating = isCalibrating,
                         )
                     }
 
@@ -216,8 +214,7 @@ fun HeadingTrackCompass(
     magneticFieldStrength: Float, // in µT
     course: Float?,
     destinationAirport: Airport?,
-    isPitchCalibrating: Boolean,
-    isBankCalibrating: Boolean
+    isCalibrating: Boolean,
 ) {
 
     val tapeColor = Color(0xFF303030)
@@ -438,12 +435,16 @@ fun HeadingTrackCompass(
                 labelPaint
             )
 
-                labelPaint.color = android.graphics.Color.WHITE
-                val magneticFieldText = String.format(Locale.US, "MAG %.1f µT", magneticFieldStrength)
+            labelPaint.color = when {
+                magneticFieldStrength > 500f -> android.graphics.Color.RED
+                magneticFieldStrength >= 200f -> android.graphics.Color.rgb(255, 165, 0) // Orange
+                else -> android.graphics.Color.WHITE
+            }
+            val magneticFieldText = String.format(Locale.US, "MAG %.1f µT", magneticFieldStrength)
                 drawText(magneticFieldText, 8f, center.y + radius + 132f, labelPaint)
 
             labelPaint.color = android.graphics.Color.WHITE
-            val bankText = if (isBankCalibrating) "Calibrating..." else String.format(Locale.US, "BA %02.0f°", bank)
+            val bankText = if (isCalibrating) "Calibrating..." else String.format(Locale.US, "BA %02.0f°", bank)
             drawText(
                 bankText,
                 rightX,
@@ -452,7 +453,7 @@ fun HeadingTrackCompass(
             )
             val pitchDisplayColor: Int
             val pitchText: String
-            if (isPitchCalibrating) {
+            if (isCalibrating) {
                 pitchText = "Calibrating..."
                 pitchDisplayColor = android.graphics.Color.WHITE
             } else {
