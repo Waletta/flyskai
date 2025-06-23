@@ -26,6 +26,7 @@
     import kotlin.math.ln
     import kotlin.math.tan
 
+
     private object Constants {
         const val KNOTS_TO_MPS = 0.514444f
         const val MIN_SPEED_MPS = 10.0f
@@ -135,43 +136,23 @@
         val isBankCalibrating: StateFlow<Boolean> = _isBankCalibrating.asStateFlow()
 
 
-
-        fun updateRawMagneticField(x: Float, y: Float, z: Float) {
-            _rawMagneticField.value = floatArrayOf(x, y, z).copyOf()
-            _magneticMagnitude.value = sqrt(x * x + y * y + z * z)
-            calculateOrientationAndDip()
-        }
-
-        fun updateRawAccelerometerData(x: Float, y: Float, z: Float) {
-            _rawAccelerometerData.value = floatArrayOf(x, y, z).copyOf()
-            calculateOrientationAndDip()
-        }
-
         private fun calculateOrientationAndDip() {
-            val acc = _rawAccelerometerData.value.map { it.roundToInt() }.toIntArray()
-            val mag = _rawMagneticField.value.map { it.roundToInt() }.toIntArray()
-
+            val acc = _rawAccelerometerData.value.map { (it * 100.0f).roundToInt() }.toIntArray()
+            val mag = _rawMagneticField.value.map { (it * 100.0f).roundToInt() }.toIntArray()
 
             if (acc.contentEquals(prevAcc) && mag.contentEquals(prevMag)) {
                 return
             }
 
-            // Cache previous values
+            // Cache
             prevAcc = acc.copyOf()
             prevMag = mag.copyOf()
-
 
             val roTation = FloatArray(16) // From device to Earth's coordinates (North, East, Down)
             val inTernal = FloatArray(16) // Primarily for internal calculations in getRotationMatrix
 
-
-            if (acc.size < 3 || mag.size < 3 || acc.all { it == 0 } || mag.all { it == 0 }) { // Ensure arrays have enough data
-                _magneticDipAngle.value = 0.0f
-                return
-            }
-
-            val accFloat = acc.map { it.toFloat() }.toFloatArray()
-            val magFloat = mag.map { it.toFloat() }.toFloatArray()
+            val accFloat = acc.map { it.toFloat() / 100.0f }.toFloatArray()
+            val magFloat = mag.map { it.toFloat() / 100.0f }.toFloatArray()
 
             val success = SensorManager.getRotationMatrix(
                 roTation,
@@ -304,9 +285,12 @@
                 currentTime,
             )
 
+            val distanceMetricToDestination = calculateDistanceToDestination(coordinates)
+
             if (-smoothedPitch >= 20f || -smoothedPitch <= -10f) {
                 playSeatbeltChime()
             }
+            calculateOrientationAndDip()
 
             _acState.value = AircraftStateData(
                 coordinates = coordinates,
@@ -320,8 +304,9 @@
                 magneticHeading = actualMagneticHeading,
                 courseToDest = computedCourseToDest,
                 destinationAirport = dest,
+                destinationDistance = distanceMetricToDestination,
                 eta = etaTimestamp,
-                magneticFieldMagnitude = _magneticMagnitude.value, // This is still the magnitude from raw sensor
+                magneticFieldMagnitude = _magneticMagnitude.value,
                 magneticDipAngle = _magneticDipAngle.value,
             )
             _eta.value = etaTimestamp
@@ -385,6 +370,20 @@
             var bearingDeg = Math.toDegrees(bearingRad)
             bearingDeg = (bearingDeg + 360) % 360
             return bearingDeg.toFloat()
+        }
+
+        private fun calculateDistanceToDestination(
+            coordinates: Coordinates,
+        ): Double {
+            val dest = _destinationAirport.value ?: return 0.0
+            val distanceKm = GeoUtils.smartDistance(
+                coordinates.latitude,
+                coordinates.longitude,
+                dest.lat,
+                dest.lon,
+                UnitSystem.METRIC
+            )
+            return distanceKm
         }
 
         private fun calculateETA(

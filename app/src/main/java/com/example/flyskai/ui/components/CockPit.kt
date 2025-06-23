@@ -1,13 +1,11 @@
 package com.example.flyskai.ui.components
 
 import java.util.Locale
-
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,29 +18,20 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.core.graphics.toColorInt
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import com.example.flyskai.ui.shared.AltitudeUnit
 import java.lang.Math.toRadians
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.pow
-import kotlin.math.sqrt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
-
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.toArgb
-
 import com.example.flyskai.ui.shared.SpeedUnit
 import model.Airport
 import com.example.flyskai.ui.shared.AppSettings
@@ -68,8 +57,8 @@ fun CockPit(cpVm: CockPitViewModel,
     val trueHeading = acState.trueHeading
     val magneticHeading = acState.magneticHeading
     val verticalSpeed = acState.verticalSpeed
-    val rtcoordinates = acState.coordinates
     val eta = acState.eta
+    val distanceToDestination = acState.destinationDistance
     val magneticFieldStrength = acState.magneticFieldMagnitude
     val magneticDipAngle = acState.magneticDipAngle
 
@@ -80,25 +69,11 @@ fun CockPit(cpVm: CockPitViewModel,
     } else {
         null
     }
-    var distanceToDestination by remember { mutableStateOf(0.0) }
-
 
     val isPitchCalibrating by cpVm.isPitchCalibrating.collectAsStateWithLifecycle()
     val isBankCalibrating by cpVm.isBankCalibrating.collectAsStateWithLifecycle()
 
 
-    LaunchedEffect(rtcoordinates, destAirport) {
-        distanceToDestination = if (destAirport != null) {
-            haversine(
-                rtcoordinates.latitude,
-                rtcoordinates.longitude,
-                destAirport!!.lat,
-                destAirport!!.lon
-            )
-        } else {
-            0.0
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -289,7 +264,6 @@ fun HeadingTrackCompass(
 
         // Pitch ladders
         val pixelsPerDegree = 7f
-        val zoomFactor = 0.1f
 
         for (pitchAngle in -30..30 step 5) {
             if (pitchAngle == 0) continue
@@ -454,7 +428,7 @@ fun HeadingTrackCompass(
                 "DRIFT ---"
             }
 
-            labelPaint.color = Color(0xFF2196F3).toArgb()
+            labelPaint.color = android.graphics.Color.WHITE
             drawText(driftLabel, 8f, verticalStart, labelPaint)
             labelPaint.alpha = 255
             val vsi = formatVSI(verticalSpeed)
@@ -462,7 +436,7 @@ fun HeadingTrackCompass(
             val paddedVsi = String.format(Locale.US,"%04d", abs(vsi))
             val signedVsi = if (vsi >= 0) "+$paddedVsi" else "-$paddedVsi"
             val formattedVsi = "VSI   $signedVsi $vsiLabel"
-            labelPaint.color = android.graphics.Color.CYAN
+            labelPaint.color = android.graphics.Color.WHITE
             drawText(
                 formattedVsi,
                 8f,
@@ -470,13 +444,12 @@ fun HeadingTrackCompass(
                 labelPaint
             )
 
-                labelPaint.color = Color(0xFF4CAF50).toArgb()
+                labelPaint.color = android.graphics.Color.WHITE
                 val magneticFieldText = String.format(Locale.US, "MAG %.1f µT", magneticFieldStrength)
                 drawText(magneticFieldText, 8f, center.y + radius + 132f, labelPaint)
 
-
             labelPaint.color = android.graphics.Color.WHITE
-            val bankText = if (isBankCalibrating) "Calibrating..." else String.format(Locale.US, "BA %03.0f°", bank)
+            val bankText = if (isBankCalibrating) "Calibrating..." else String.format(Locale.US, "BA %02.0f°", bank)
             drawText(
                 bankText,
                 rightX,
@@ -489,7 +462,7 @@ fun HeadingTrackCompass(
                 pitchText = "Calibrating..."
                 pitchDisplayColor = android.graphics.Color.WHITE
             } else {
-                pitchText = String.format(Locale.US, "Pitch %03.0f°", -pitch)
+                pitchText = String.format(Locale.US, "Pitch %02.0f°", -pitch)
                 pitchDisplayColor = when {
                     -pitch >=  20f || -pitch <= -10f -> android.graphics.Color.RED
                     -pitch >=  10f || -pitch <= -6f -> "#FFA500".toColorInt()
@@ -500,27 +473,17 @@ fun HeadingTrackCompass(
             drawText(
                 pitchText,
                 rightX,
-                verticalStart + 36f, // Offset by 36f to place below BA label
+                verticalStart + 36f,
                 labelPaint
             )
 
-                labelPaint.color = Color(0xFF2196F3).toArgb()
+                labelPaint.color = android.graphics.Color.WHITE
                 val dipAngleText = String.format(Locale.US, "DIP %+.1f°", magneticDipAngle) // Format with sign and one decimal
                 drawText(dipAngleText, rightX, verticalStart + 72f, labelPaint)
-
         }
     }
 }
 
-
-fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-    val r = 6371.0 // Earth radius in km
-    val dLat = toRadians(lat2 - lat1)
-    val dLon = toRadians(lon2 - lon1)
-    val a = sin(dLat / 2).pow(2.0) + cos(toRadians(lat1)) * cos(toRadians(lat2)) * sin(dLon / 2).pow(2.0)
-    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    return r * c // km to NM
-}
 
 fun formatSpeed(mps: Float): Int {
     return when (AppSettings.speedUnit) {

@@ -78,7 +78,6 @@ class SensorHandler(private val sensorManager: SensorManager) {
 
     fun stopListening() {
         sensorManager.unregisterListener(sensorListener)
-        onOrientationChanged = null
-        onAccelerometerChanged = null
     }
+
 }

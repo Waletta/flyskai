@@ -10,7 +10,6 @@ import kotlin.math.sqrt
 data class Airport(val icao: String, val name: String, val lat: Double, val lon: Double)
 
 object GeoUtils {
-
     fun calculateFlatDistance(x: Double, y: Double, unit: UnitSystem): Double {
         val distanceMeters = sqrt(x.pow(2) + y.pow(2)) * 6_371_000.0
         return when (unit) {
@@ -18,7 +17,6 @@ object GeoUtils {
             UnitSystem.IMPERIAL -> distanceMeters / 1852.0
         }
     }
-
     fun calculateHaversineDistance(
         fromLat: Double,
         fromLon: Double,
@@ -29,10 +27,8 @@ object GeoUtils {
         val lat1 = Math.toRadians(fromLat)
         val lat2 = Math.toRadians(toLat)
         val deltaLon = Math.toRadians(toLon - fromLon)
-
         val havA = sin((lat2 - lat1) / 2).pow(2) + cos(lat1) * cos(lat2) * sin(deltaLon / 2).pow(2)
         val angularDistance = 2 * atan2(sqrt(havA), sqrt(1 - havA))
-
         val distanceMeters = angularDistance * 6_371_000.0 // Earth Radius
         return when (unit) {
             UnitSystem.METRIC -> distanceMeters / 1000.0
@@ -125,6 +121,7 @@ data class AircraftStateData(
     val magneticHeading: Float = 0f,                       // Direction aircraft is pointing (magnetic north)
     val courseToDest: Float = 0f,                          // Direction to destination
     val destinationAirport: Airport? = null,               // Optional destination airport data
+    val destinationDistance: Double = 0.0,                // Distance to destination
     val eta: Long? = null,
     val magneticFieldMagnitude: Float = 0.0f,
     val magneticDipAngle: Float = 0.0f
