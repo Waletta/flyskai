@@ -1,7 +1,6 @@
     package com.example.flyskai.ui.shared
 
     import android.hardware.GeomagneticField
-    import android.hardware.SensorManager
     import android.media.AudioManager
     import android.media.ToneGenerator
     import androidx.lifecycle.ViewModel
@@ -18,11 +17,7 @@
     import model.GeoUtils
     import kotlin.math.atan2
     import kotlin.math.cos
-    import kotlin.math.pow
-    import kotlin.math.sqrt
-    import android.opengl.Matrix
-    import kotlin.math.roundToInt
-    import kotlin.math.PI
+     import kotlin.math.PI
     import kotlin.math.ln
     import kotlin.math.tan
 
@@ -56,7 +51,6 @@
             }
             return smoothedValue
         }
-
         fun reset() {
             smoothedValue = 0f
             initialized = false
@@ -71,7 +65,6 @@
         private var ema: Float = 0f
         private var startTime: Long = System.currentTimeMillis()
         private val buffer = ArrayDeque<Float>(5)
-
         fun smooth(rawVerticalSpeed: Float): Float {
             val currentTime = System.currentTimeMillis()
             val elapsed = currentTime - startTime
@@ -91,12 +84,7 @@
         private val _destinationAirport = MutableStateFlow<Airport?>(null)
         val destinationAirport: StateFlow<Airport?> = _destinationAirport.asStateFlow()
 
-        private val _rawMagneticField = MutableStateFlow(FloatArray(3) { 0f })
-        private val _rawAccelerometerData = MutableStateFlow(FloatArray(3) { 0f })
-
         private val _magneticMagnitude = MutableStateFlow(0f)
-
-        private val _magneticDipAngle = MutableStateFlow(0f)
 
 
         private val _acState = MutableStateFlow(AircraftStateData())
@@ -126,65 +114,11 @@
         private var pitchReference: Float = 0f
         private var bankAngleReference: Float = 0f
 
-        private var prevAcc: IntArray? = null
-        private var prevMag: IntArray? = null
-
         private val _isPitchCalibrating = MutableStateFlow(false)
         val isPitchCalibrating: StateFlow<Boolean> = _isPitchCalibrating.asStateFlow()
 
         private val _isBankCalibrating = MutableStateFlow(false)
         val isBankCalibrating: StateFlow<Boolean> = _isBankCalibrating.asStateFlow()
-
-
-        private fun calculateOrientationAndDip() {
-            val acc = _rawAccelerometerData.value.map { (it * 100.0f).roundToInt() }.toIntArray()
-            val mag = _rawMagneticField.value.map { (it * 100.0f).roundToInt() }.toIntArray()
-
-            if (acc.contentEquals(prevAcc) && mag.contentEquals(prevMag)) {
-                return
-            }
-
-            // Cache
-            prevAcc = acc.copyOf()
-            prevMag = mag.copyOf()
-
-            val roTation = FloatArray(16) // From device to Earth's coordinates (North, East, Down)
-            val inTernal = FloatArray(16) // Primarily for internal calculations in getRotationMatrix
-
-            val accFloat = acc.map { it.toFloat() / 100.0f }.toFloatArray()
-            val magFloat = mag.map { it.toFloat() / 100.0f }.toFloatArray()
-
-            val success = SensorManager.getRotationMatrix(
-                roTation,
-                inTernal,
-                accFloat,
-                magFloat
-            )
-
-            if (success) {
-                val worldMagneticField = FloatArray(4)
-                val magVec = floatArrayOf(magFloat[0], magFloat[1], magFloat[2], 0f)
-
-                Matrix.multiplyMV(worldMagneticField, 0, roTation, 0, magVec, 0)
-
-                val bxwWorldEast = worldMagneticField[0] // East component
-                val byWorldNorth = worldMagneticField[1] // North component
-                val bzWorldUp = worldMagneticField[2] // Up component
-
-                val horizontalMagnitude = sqrt(bxwWorldEast.pow(2) + byWorldNorth.pow(2))
-                val bzWorldDown = -bzWorldUp
-
-                if (horizontalMagnitude != 0.0f || bzWorldDown != 0.0f) {
-                    val dipAngleInRadians = atan2(bzWorldDown.toDouble(), horizontalMagnitude.toDouble())
-                    _magneticDipAngle.value = Math.toDegrees(dipAngleInRadians).toFloat()
-                } else {
-                    _magneticDipAngle.value = 0.0f // Magnetic field is zero or undefined
-                }
-            } else {
-                _magneticDipAngle.value = 0.0f // Or keep last valid value
-            }
-        }
-
 
         fun onDestinationClick() {
             _showDestinationDialog.value = true
@@ -290,7 +224,6 @@
             if (-smoothedPitch >= 20f || -smoothedPitch <= -10f) {
                 playSeatbeltChime()
             }
-            calculateOrientationAndDip()
 
             _acState.value = AircraftStateData(
                 coordinates = coordinates,
@@ -307,7 +240,6 @@
                 destinationDistance = distanceMetricToDestination,
                 eta = etaTimestamp,
                 magneticFieldMagnitude = _magneticMagnitude.value,
-                magneticDipAngle = _magneticDipAngle.value,
             )
             _eta.value = etaTimestamp
 

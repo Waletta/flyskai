@@ -124,7 +124,6 @@ data class AircraftStateData(
     val destinationDistance: Double = 0.0,                // Distance to destination
     val eta: Long? = null,
     val magneticFieldMagnitude: Float = 0.0f,
-    val magneticDipAngle: Float = 0.0f
 )
 
 data class Coordinates(

@@ -49,6 +49,7 @@ fun CockPit(cpVm: CockPitViewModel,
     val displaySpeed = formatSpeed(acState.speed)
     val displayAltitude = formatAltitude(acState.altitude.toFloat())
     val destAirport by cpVm.destinationAirport.collectAsState()
+    val distanceToDestination = acState.destinationDistance
     val course = acState.courseToDest
     val pitch = acState.pitch
     val bank = acState.bank
@@ -58,9 +59,7 @@ fun CockPit(cpVm: CockPitViewModel,
     val magneticHeading = acState.magneticHeading
     val verticalSpeed = acState.verticalSpeed
     val eta = acState.eta
-    val distanceToDestination = acState.destinationDistance
     val magneticFieldStrength = acState.magneticFieldMagnitude
-    val magneticDipAngle = acState.magneticDipAngle
 
     val drift: Float? = if (speed > 60f) {
         ((track - trueHeading + 360) % 360).let {
@@ -72,8 +71,6 @@ fun CockPit(cpVm: CockPitViewModel,
 
     val isPitchCalibrating by cpVm.isPitchCalibrating.collectAsStateWithLifecycle()
     val isBankCalibrating by cpVm.isBankCalibrating.collectAsStateWithLifecycle()
-
-
 
     Box(
         modifier = Modifier
@@ -94,7 +91,6 @@ fun CockPit(cpVm: CockPitViewModel,
                             .padding(horizontal = 8.dp, vertical = 8.dp)
                             .background(Color.Black)
                     )
-                    // Add a Spacer only if the DestinationInfoBar is visible
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
@@ -125,7 +121,6 @@ fun CockPit(cpVm: CockPitViewModel,
                             drift = drift,
                             verticalSpeed = verticalSpeed,
                             magneticFieldStrength = magneticFieldStrength,
-                            magneticDipAngle = magneticDipAngle,
                             course = course,
                             destinationAirport = destAirport,
                             isPitchCalibrating = isPitchCalibrating,
@@ -219,7 +214,6 @@ fun HeadingTrackCompass(
     drift: Float?,
     verticalSpeed: Float,
     magneticFieldStrength: Float, // in µT
-    magneticDipAngle: Float,
     course: Float?,
     destinationAirport: Airport?,
     isPitchCalibrating: Boolean,
@@ -477,10 +471,7 @@ fun HeadingTrackCompass(
                 labelPaint
             )
 
-                labelPaint.color = android.graphics.Color.WHITE
-                val dipAngleText = String.format(Locale.US, "DIP %+.1f°", magneticDipAngle) // Format with sign and one decimal
-                drawText(dipAngleText, rightX, verticalStart + 72f, labelPaint)
-        }
+         }
     }
 }
 
