@@ -15,3 +15,5 @@
 extern
 local.properties
 /.kotlin
+/app/build.gradle.kts.bak
+/gradle/gradle-daemon-jvm.properties
