@@ -95,6 +95,7 @@ When using FlyskAI on a commercial flight:
 1. **Window Seat**: Place or hold your phone close to the passenger window for the best satellite signal line-of-sight.
 2. **Initial Satellite Lock**: Inside an airplane cabin, cold-start satellite lock without cellular A-GPS typically takes **1 to 3 minutes**. Keep the phone steady near the window until the GPS fix is established.
 3. **Airplane Mode**: Feel free to turn on Airplane Mode—FlyskAI speaks directly to the onboard GNSS satellite chip and internal motion sensors without needing Wi-Fi or cellular networks.
+4. **Pilots Cockpit:** Better satellites access. Please do not offer them your phone through the cockpit door.
 
 ---
 
