@@ -1,3 +1,14 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val mapboxAccessToken: String = localProperties.getProperty("MAPBOX_ACCESS_TOKEN")
+    ?: (project.findProperty("MAPBOX_ACCESS_TOKEN") as? String)
+    ?: System.getenv("MAPBOX_ACCESS_TOKEN")
+    ?: ""
+
 gradle.projectsEvaluated {
     tasks.matching { it.name.contains("test", ignoreCase = true) }.configureEach {
         enabled = false
@@ -36,6 +47,7 @@ plugins {
             versionCode = 1
             versionName = "1.5"
 
+            resValue("string", "mapbox_access_token", mapboxAccessToken)
         }
 
         buildTypes {
@@ -54,6 +66,7 @@ plugins {
         buildFeatures {
             compose = true
             viewBinding = true
+            resValues = true
         }
     }
 

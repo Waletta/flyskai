@@ -66,22 +66,18 @@ cd flyskai
 
 ### 2. Configure Mapbox Credentials
 
-Mapbox requires a Secret Download Token to download dependencies and a Public Access Token to render maps.
+Copy `local.properties.example` to `local.properties` and add your Mapbox tokens:
 
-1. **Download Token** (for Gradle dependencies):
-   Add your secret token with `downloads:read` scope to your user-level `~/.gradle/gradle.properties`:
-   ```properties
-   MAPBOX_DOWNLOADS_TOKEN=sk.your_mapbox_secret_download_token
-   ```
+```bash
+cp local.properties.example local.properties
+```
 
-2. **Access Token** (for map rendering):
-   Place your public Mapbox token in `app/src/main/res/values/mapbox_access_token.xml`:
-   ```xml
-   <?xml version="1.0" encoding="utf-8"?>
-   <resources>
-       <string name="mapbox_access_token">pk.your_public_token_here</string>
-   </resources>
-   ```
+Open `local.properties` and fill in your tokens:
+```properties
+MAPBOX_ACCESS_TOKEN=pk.your_mapbox_public_token_here
+MAPBOX_DOWNLOADS_TOKEN=your_mapbox_download_token_here
+```
+*(Note: `local.properties` is in `.gitignore`, keeping your personal credentials completely private).*
 
 ### 3. Build & Run
 
@@ -117,6 +113,7 @@ Contributions from pilots, passengers, and developers are warmly welcomed!
 
 ---
 
-## 📄 License
+## 📄 License & Privacy
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+- **License**: This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+- **Privacy Policy**: Read our zero-tracking, on-device policy in [PRIVACY.md](PRIVACY.md).

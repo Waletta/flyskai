@@ -1,0 +1,10 @@
+## Local configuration template
+## Copy this file to `local.properties` and add your Android SDK and Mapbox tokens.
+
+sdk.dir=/path/to/your/Android/Sdk
+
+# Mapbox Public Access Token (starts with pk.) - required for map rendering
+MAPBOX_ACCESS_TOKEN=your_mapbox_public_token_here
+
+# Mapbox Secret Download Token (starts with sk.) - required by Gradle to download Mapbox SDK
+MAPBOX_DOWNLOADS_TOKEN=your_mapbox_secret_download_token_here
