@@ -101,18 +101,23 @@ When using FlyskAI on a commercial flight:
 
 ---
 
-## 🤝 Contributing
+## ❤️ Contributing
 
 Contributions from pilots, passengers, and developers are warmly welcomed!
 
-- **Airport Database**: Help expand the list of known airports in `model/AirCraftData.kt`.
-- **Bug Reports & Ideas**: Open an issue on GitHub to suggest features or report bugs.
-- **Pull Requests**:
+- **Airport Database:** Help expand the list of known airports in `model/AirCraftData.kt`.
+- **Bug Reports & Ideas:** Open an issue on GitHub to suggest features or report bugs.
+- **Pull Requests:**
   1. Fork the repository
   2. Create a feature branch (`git checkout -b feature/amazing-feature`)
   3. Commit your changes (`git commit -m 'Add amazing feature'`)
   4. Push to the branch (`git push origin feature/amazing-feature`)
-  5. Open a Pull Request
+
+- **Fear of Flying Mode:** A calming, reassuring mode for nervous passengers — plain-language explanations of what's happening, why the plane is banking, what turbulence really is, and gentle reassurance that everything is normal. Because "the wing is flexing" is *supposed* to happen.
+- **Flight Attitude Alerts:** Configurable alerts for bank angle, pitch, and other attitude parameters — useful for aviation enthusiasts, student pilots, and anyone who wants to know *why* the cabin just tilted.
+- **Offline AI LLM:** A fully offline language model that lets you chat about the cities, landmarks, and terrain you're flying over — no Wi-Fi, no cellular, no data plan required. Just you, the window seat, and a very well-read AI.
+
+Have an idea that doesn't fit here? Open an issue — we'd love to hear it.
 
 ---
 
