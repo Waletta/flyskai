@@ -10,7 +10,7 @@ plugins {
         alias(libs.plugins.compose.compiler)
 }
 
-    android {
+    extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
 
         testOptions {
             unitTests.isReturnDefaultValues = true
@@ -38,9 +38,6 @@ plugins {
 
         }
 
-
-
-
         buildTypes {
             debug {
                 isMinifyEnabled = false
@@ -53,12 +50,16 @@ plugins {
             sourceCompatibility = JavaVersion.VERSION_11
             targetCompatibility = JavaVersion.VERSION_11
         }
-        kotlinOptions {
-            jvmTarget = "11"
-        }
+
         buildFeatures {
             compose = true
             viewBinding = true
+        }
+    }
+
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
         }
     }
 
