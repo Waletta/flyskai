@@ -33,6 +33,8 @@
 - **Adaptive Layout**:
   - Optimized for both Portrait (stacked PFD + map) and Landscape (side-by-side cockpit + map) orientations on phones and tablets.
 
+🚀 Fly safe with FlyskAI!
+
 ---
 
 ## 🛠️ Tech Stack & Architecture
