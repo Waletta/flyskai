@@ -27,7 +27,7 @@ plugins {
 
 
         namespace = "com.example.flyskai"
-        compileSdk = 35
+        compileSdk = 37
 
         defaultConfig {
             applicationId = "com.example.flyskai"

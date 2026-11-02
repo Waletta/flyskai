@@ -173,6 +173,124 @@
             }
         }
 
+        private var currentCoordinates = Coordinates(0.0, 0.0)
+        private var currentAltitude = 0.0
+        private var currentSpeed = 0f
+        private var currentCourseOverGround = 0f
+        private var currentMagneticHeading = 0f
+
+        fun updateAttitude(
+            pitch: Float,
+            bank: Float,
+            magneticHeading: Float,
+            magneticFieldX: Float = 0f,
+            magneticFieldY: Float = 0f,
+            magneticFieldZ: Float = 0f
+        ) {
+            val validHeading = if (magneticHeading.isFinite()) (magneticHeading % 360f + 360f) % 360f else 0f
+            val validMagX = if (magneticFieldX.isFinite()) magneticFieldX else 0f
+            val validMagY = if (magneticFieldY.isFinite()) magneticFieldY else 0f
+            val validMagZ = if (magneticFieldZ.isFinite()) magneticFieldZ else 0f
+
+            val smoothedPitch = pitchSmoother.smooth(pitch.coerceIn(-90f, 90f)) - pitchReference
+            val smoothedBank = bankSmoother.smooth(bank.coerceIn(-180f, 180f)) - bankAngleReference
+            val magneticFieldMagnitude = sqrt(validMagX * validMagX + validMagY * validMagY + validMagZ * validMagZ)
+
+            val trueHeading = if (currentCoordinates.latitude != 0.0 || currentCoordinates.longitude != 0.0) {
+                try {
+                    val geoField = GeomagneticField(
+                        currentCoordinates.latitude.toFloat(),
+                        currentCoordinates.longitude.toFloat(),
+                        currentAltitude.toFloat(),
+                        System.currentTimeMillis()
+                    )
+                    (validHeading - geoField.declination + 360f) % 360f
+                } catch (e: Exception) {
+                    validHeading
+                }
+            } else {
+                validHeading
+            }
+
+            if (-smoothedPitch >= 20f || -smoothedPitch <= -10f) {
+                playSeatbeltChime()
+            }
+
+            currentMagneticHeading = validHeading
+
+            _acState.value = _acState.value.copy(
+                pitch = smoothedPitch.coerceIn(-50f, 50f),
+                bank = smoothedBank.coerceIn(-90f, 90f),
+                trueHeading = trueHeading,
+                magneticHeading = validHeading,
+                magneticFieldMagnitude = magneticFieldMagnitude
+            )
+        }
+
+        fun updateLocation(
+            coordinates: Coordinates,
+            altitude: Double,
+            speed: Float,
+            courseOverGround: Float
+        ) {
+            val validSpeed = if (speed.isFinite() && speed >= 0f) speed else 0f
+            val validCourse = if (courseOverGround.isFinite()) (courseOverGround % 360f + 360f) % 360f else 0f
+            val validAlt = if (altitude.isFinite()) altitude else 0.0
+            val currentTime = System.currentTimeMillis()
+            val deltaTimeSec = (currentTime - lastTime) / 1000.0
+            val deltaAlt = validAlt - lastAltitude
+            val rawVerticalSpeed = if (lastAltitude != 0.0 && deltaTimeSec > 0.001) (deltaAlt / deltaTimeSec).toFloat() else 0f
+            val smoothedVerticalSpeed = vsiSmoother.smooth(rawVerticalSpeed)
+
+            val trueHeading = try {
+                val geoField = GeomagneticField(
+                    coordinates.latitude.toFloat(),
+                    coordinates.longitude.toFloat(),
+                    validAlt.toFloat(),
+                    currentTime
+                )
+                (currentMagneticHeading - geoField.declination + 360f) % 360f
+            } catch (e: Exception) {
+                currentMagneticHeading
+            }
+            val dest: Airport? = _destinationAirport.value
+
+            val computedCourseToDest = calculateCourseToDestination(
+                coordinates.latitude,
+                coordinates.longitude,
+            )
+
+            val etaTimestamp = calculateETA(
+                coordinates,
+                validSpeed,
+                currentTime,
+            )
+
+            val distanceMetricToDestination = calculateDistanceToDestination(coordinates)
+
+            currentCoordinates = coordinates
+            currentAltitude = validAlt
+            currentSpeed = validSpeed
+            currentCourseOverGround = validCourse
+
+            _acState.value = _acState.value.copy(
+                coordinates = coordinates,
+                altitude = validAlt,
+                speed = validSpeed,
+                courseOverGround = validCourse,
+                verticalSpeed = smoothedVerticalSpeed,
+                trueHeading = trueHeading,
+                courseToDest = computedCourseToDest,
+                destinationAirport = dest,
+                destinationDistance = distanceMetricToDestination,
+                eta = etaTimestamp
+            )
+            _eta.value = etaTimestamp
+
+            lastAltitude = validAlt
+            lastTime = currentTime
+        }
+
         fun updateACData(
             coordinates: Coordinates,
             altitude: Double,
@@ -185,67 +303,8 @@
             magneticFieldY: Float,
             magneticFieldZ: Float
         ) {
-            require(speed >= 0f) { "Speed cannot be negative" }
-            require(courseOverGround in 0f..360f) { "Course must be between 0 and 360 degrees" }
-            require(magneticHeadingFromSensor in 0f..360f) { "Magnetic heading must be between 0 and 360 degrees" }
-            require(magneticFieldX.isFinite() && magneticFieldY.isFinite() && magneticFieldZ.isFinite()) { "Magnetic field components must be finite" }
-
-            val currentTime = System.currentTimeMillis()
-            val deltaTimeSec = (currentTime - lastTime) / 1000.0
-            val deltaAlt = altitude - lastAltitude
-            val rawVerticalSpeed = if (deltaTimeSec > 0.001) (deltaAlt / deltaTimeSec).toFloat() else 0f
-            val smoothedVerticalSpeed = vsiSmoother.smooth(rawVerticalSpeed)
-            val smoothedPitch = pitchSmoother.smooth(pitch.coerceIn(-90f, 90f)) - pitchReference
-            val smoothedBank = bankSmoother.smooth(bank.coerceIn(-180f, 180f)) - bankAngleReference
-            val geoField = GeomagneticField(
-                coordinates.latitude.toFloat(),
-                coordinates.longitude.toFloat(),
-                altitude.toFloat(),
-                currentTime
-            )
-            val actualMagneticHeading = magneticHeadingFromSensor
-            val actualTrueHeading = (magneticHeadingFromSensor - geoField.declination + 360) % 360
-            val dest: Airport? = _destinationAirport.value
-
-            val magneticFieldMagnitude = sqrt(magneticFieldX * magneticFieldX + magneticFieldY * magneticFieldY + magneticFieldZ * magneticFieldZ)
-
-            val computedCourseToDest = calculateCourseToDestination(
-                coordinates.latitude,
-                coordinates.longitude,
-            )
-
-            val etaTimestamp = calculateETA(
-                coordinates,
-                speed,
-                currentTime,
-            )
-
-            val distanceMetricToDestination = calculateDistanceToDestination(coordinates)
-
-            if (-smoothedPitch >= 20f || -smoothedPitch <= -10f) {
-                playSeatbeltChime()
-            }
-
-            _acState.value = AircraftStateData(
-                coordinates = coordinates,
-                altitude = altitude,
-                speed = speed,
-                courseOverGround = courseOverGround,
-                verticalSpeed = smoothedVerticalSpeed,
-                pitch = smoothedPitch.coerceIn(-50f, 50f),
-                bank = smoothedBank.coerceIn(-90f, 90f),
-                trueHeading = actualTrueHeading,
-                magneticHeading = actualMagneticHeading,
-                courseToDest = computedCourseToDest,
-                destinationAirport = dest,
-                destinationDistance = distanceMetricToDestination,
-                eta = etaTimestamp,
-                magneticFieldMagnitude = magneticFieldMagnitude,
-            )
-            _eta.value = etaTimestamp
-
-            lastAltitude = altitude
-            lastTime = currentTime
+            updateAttitude(pitch, bank, magneticHeadingFromSensor, magneticFieldX, magneticFieldY, magneticFieldZ)
+            updateLocation(coordinates, altitude, speed, courseOverGround)
         }
 
         override fun onCleared() {
