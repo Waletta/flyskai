@@ -14,6 +14,6 @@
 .cxx
 extern
 local.properties
-/.kotlin
+/.kotlin/errors
 /app/build.gradle.kts.bak
 /gradle/gradle-daemon-jvm.properties

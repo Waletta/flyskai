@@ -8,9 +8,9 @@ lifecycleLivedataKtx = "2.11.0"
 lifecycleViewmodelKtx = "2.11.0"
 lifecycleRuntimeCompose = "2.11.0"
 
-navigationFragmentKtx = "2.10.2"
-navigationUiKtx = "2.10.2"
-navigationCompose = "2.10.2"
+navigationFragmentKtx = "2.8.9"
+navigationUiKtx = "2.8.9"
+navigationCompose = "2.8.9"
 
 
 okhttp3 = "5.5.1"
