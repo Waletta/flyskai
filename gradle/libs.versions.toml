@@ -17,7 +17,7 @@ okhttp3 = "5.5.1"
 
 # Maps
 googlePlayServicesLocation = "21.4.0"
-mapbox-vlast = "11.11.0"
+mapbox-vlast = "11.34.1"
 mapbox-turf-version = "7.3.2"
 
 retrofit = "3.0.0"
